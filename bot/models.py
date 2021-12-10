@@ -45,4 +45,4 @@ class Note(Base):
 
 
 	def __repr__(self):
-		return f"{self.title} - <id: {self.id}>"
+		return f"{self.user} - <id-note: {self.id}>"
