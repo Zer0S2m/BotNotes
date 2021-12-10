@@ -8,4 +8,6 @@ class StatesCreateNote(Helper):
 
 	mode = HelperMode.snake_case
 
-	TEST_STATE_1 = ListItem()
+	STATE_CREATE_NOTE_TITLE = ListItem()
+	STATE_CREATE_NOTE_TEXT = ListItem()
+	STATE_CREATE_CATEGORY = ListItem()

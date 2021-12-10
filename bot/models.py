@@ -9,7 +9,8 @@ from sqlalchemy.orm import relationship
 from sqlalchemy.ext.declarative import declarative_base
 
 from config import (
-	NAME_DB, LIMIT_TITLE, LIMIT_TEXT
+	NAME_DB, LIMIT_TITLE, LIMIT_TEXT,
+	LIMIT_CATEGORY
 )
 
 
@@ -25,7 +26,8 @@ class User(Base):
 	id = Column(Integer, primary_key = True)
 	first_name = Column(String(255), nullable = False)
 	username = Column(String(255), nullable = False)
-	notes = relationship("Note", back_populates = "user")
+	notes = relationship("Note", backref = "user_notes")
+	categories = relationship("Category", backref = "user_categories")
 
 	def __repr__(self):
 		return f"{self.first_name}: <username: {self.username}>"
@@ -37,12 +39,25 @@ class Note(Base):
 	__tablename__ = "note"
 
 	id = Column(Integer, primary_key = True)
-	title = Column(String(255), default = False, info = {"limit": LIMIT_TITLE})
-	text = Column(Text(1000), nullable = False, info = {"limit": LIMIT_TEXT})
+	title = Column(String(LIMIT_TITLE), default = False, info = {"limit": LIMIT_TITLE})
+	text = Column(Text(LIMIT_TEXT), nullable = False, info = {"limit": LIMIT_TEXT})
 	pub_date = Column(DateTime, default = datetime.now(), nullable = False)
 	user_id = Column(Integer, ForeignKey('user.id'))
-	user = relationship("User", back_populates = "notes")
 
 
 	def __repr__(self):
 		return f"{self.user} - <id-note: {self.id}>"
+
+
+class Category(Base):
+	"""docstring for Category"""
+
+	__tablename__ = "category"
+
+	id = Column(Integer, primary_key = True)
+	title = Column(String(LIMIT_CATEGORY), default = False, info = {"limit": LIMIT_CATEGORY})
+	user_id = Column(Integer, ForeignKey('user.id'))
+
+
+	def __repr__(self):
+		return self.title

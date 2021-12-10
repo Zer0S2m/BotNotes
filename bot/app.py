@@ -30,8 +30,11 @@ def register_handlers(dp: Dispatcher):
 
 	dp.register_callback_query_handler(handlers.process_create_note, lambda c: c.data == 'create_note')
 	dp.register_callback_query_handler(handlers.process_view_note, lambda c: c.data == 'view_note')
+	dp.register_callback_query_handler(handlers.process_create_category, lambda c: c.data == 'create_category')
 
-	dp.register_message_handler(handlers.process_create_note_state_title, state = StatesCreateNote.TEST_STATE_1)
+	dp.register_message_handler(handlers.process_create_note_title_state, state = StatesCreateNote.STATE_CREATE_NOTE_TITLE)
+	dp.register_message_handler(handlers.process_create_note_text_state, state = StatesCreateNote.STATE_CREATE_NOTE_TEXT)
+	dp.register_message_handler(handlers.process_create_category_state, state = StatesCreateNote.STATE_CREATE_CATEGORY)
 
 
 async def main():
