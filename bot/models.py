@@ -8,7 +8,9 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import relationship
 from sqlalchemy.ext.declarative import declarative_base
 
-from config import NAME_DB
+from config import (
+	NAME_DB, LIMIT_TITLE, LIMIT_TEXT
+)
 
 
 engine = create_engine(f"sqlite:///{NAME_DB}.db")
@@ -35,8 +37,8 @@ class Note(Base):
 	__tablename__ = "note"
 
 	id = Column(Integer, primary_key = True)
-	title = Column(String(255))
-	text = Column(Text(1000), nullable = False)
+	title = Column(String(255), default = False, info = {"limit": LIMIT_TITLE})
+	text = Column(Text(1000), nullable = False, info = {"limit": LIMIT_TEXT})
 	pub_date = Column(DateTime, default = datetime.now(), nullable = False)
 	user_id = Column(Integer, ForeignKey('user.id'))
 	user = relationship("User", back_populates = "notes")
