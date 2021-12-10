@@ -1,8 +1,10 @@
-from aiogram.types import ReplyKeyboardMarkup
-from aiogram.types import KeyboardButton
+from aiogram.types import InlineKeyboardButton
+from aiogram.types import InlineKeyboardMarkup
 
 
-button_hi = KeyboardButton('Привет! 👋')
+btn_create_note = InlineKeyboardButton('Создать заметку', callback_data = "create_note")
+btn_view_all_note = InlineKeyboardButton("Посмотреть все заметки", callback_data = "view_note")
 
-greet_kb = ReplyKeyboardMarkup()
-greet_kb.add(button_hi)
+control_notes = InlineKeyboardMarkup(row_width = 2).row(
+    btn_create_note, btn_view_all_note
+)
