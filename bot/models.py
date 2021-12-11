@@ -43,10 +43,11 @@ class Note(Base):
 	text = Column(Text(LIMIT_TEXT), nullable = False, info = {"limit": LIMIT_TEXT})
 	pub_date = Column(DateTime, default = datetime.now(), nullable = False)
 	user_id = Column(Integer, ForeignKey('user.id'))
+	category_id = Column(Integer, ForeignKey('category.id'), default = False)
 
 
 	def __repr__(self):
-		return f"{self.user} - <id-note: {self.id}>"
+		return f"<id-user: {self.user_id}> - <id-note: {self.id}>"
 
 
 class Category(Base):
@@ -60,4 +61,4 @@ class Category(Base):
 
 
 	def __repr__(self):
-		return self.title
+		return f"<id-user: {self.user_id}> - <title-category: {self.title}>"
