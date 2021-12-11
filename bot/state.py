@@ -2,20 +2,27 @@ from aiogram.utils.helper import (
 	Helper, HelperMode, ListItem
 )
 
+from aiogram.dispatcher.filters.state import State
+from aiogram.dispatcher.filters.state import StatesGroup
 
-class StatesCreateNote(Helper):
-	"""docstring for StatesCreateNote"""
+
+class FSMFormNote(StatesGroup):
+	"""docstring for FSMFormNote"""
+
+	title = State()
+	text = State()
+	category = State()
+
+
+class FSMFormCategory(StatesGroup):
+	"""docstring for FSMFormCategory"""
+
+	title = State()
+
+
+class StatesNote(Helper):
+	"""docstring for StatesNote"""
 
 	mode = HelperMode.snake_case
 
-	STATE_CREATE_NOTE_TITLE = ListItem()
-	STATE_CREATE_NOTE_TEXT = ListItem()
-	STATE_CREATE_NOTE_CATEGORY = ListItem()
-
-
-class StatesCreateCategory(Helper):
-	"""docstring for StatesCreateCategory"""
-
-	mode = HelperMode.snake_case
-
-	STATE_CREATE_CATEGORY = ListItem()
+	STATE_VIEW_NOTE_ON_CATEGORY = ListItem()
