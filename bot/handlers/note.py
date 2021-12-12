@@ -49,6 +49,7 @@ async def process_create_note_title_state(msg: types.Message, state: FSMContext)
 
 
 async def process_create_note_text_state(msg: types.Message, state: FSMContext):
+	user_id = session.query(User).filter(User.username == msg.from_user.username).first().id
 	state = dp.current_state(user = msg.from_user.id)
 	text = msg.text.strip()
 
@@ -66,7 +67,7 @@ async def process_create_note_text_state(msg: types.Message, state: FSMContext):
 				msg.from_user.id,
 				"Выберите категорию:",
 				reply_markup = keyboards.create_btns_for_choice_categories(
-					categoies = session.query(Category).filter(User.username == msg.from_user.username).all()
+					categoies = session.query(Category).filter(Category.user_id == user_id).all()
 				)
 			)
 
@@ -93,8 +94,8 @@ async def process_create_note_category_state(msg: types.Message, state: FSMConte
 	else:
 		async with state.proxy() as data:
 			if title != "-":
-				data["category"] = session.query(Category).filter(
-					Category.title == title and Category.user_id == user_id
+				data["category"] = session.query(Category).filter_by(
+					title = title, user_id = user_id
 				).first().id
 			else:
 				data["category"] = False
@@ -159,10 +160,18 @@ async def process_view_note_on_category_state(msg: types.Message):
 		await state.reset_state()
 
 	else:
-		category_id = session.query(Category).filter(
-			Category.title == title and Category.user_id == user_id
-		).first().id
-		notes = session.query(Note).filter(Note.category_id == category_id).all()
+		category_id = session.query(Category).filter_by(
+			title = title, user_id = user_id
+		).first()
+
+		if not category_id:
+			category_id = False
+		else:
+			category_id = category_id.id
+
+		notes = session.query(Note).filter_by(
+			category_id = category_id, user_id = user_id
+		).all()
 
 		if not notes:
 			await bot.send_message(msg.from_user.id, "Записей нет!", reply_markup = types.ReplyKeyboardRemove())
@@ -200,16 +209,16 @@ async def process_delete_note_state(msg: types.Message):
 	user_id = session.query(User).filter(User.username == msg.from_user.username).first().id
 
 	try:
-		id = int(msg.text.strip())
+		note_id = int(msg.text.strip())
 	except ValueError:
-		id = False
+		note_id = False
 
-	if not id:
+	if not note_id:
 		await msg.reply("Неверно указан идентификатор!\nПовторите попытку:")
 
 	else:
-		note_deleted = session.query(Note).filter(
-			Note.id == id and Note.user_id == user_id
+		note_deleted = session.query(Note).filter_by(
+			user_id = user_id, id = note_id
 		).first()
 
 		if not note_deleted:

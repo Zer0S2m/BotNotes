@@ -3,6 +3,7 @@ import asyncio
 from aiogram import Dispatcher
 from aiogram import Bot
 from aiogram.types import BotCommand
+from aiogram.dispatcher.filters import Text
 
 from handlers import common
 from handlers import note
@@ -18,21 +19,24 @@ from state import (
 
 
 async def set_commands(bot: Bot):
-    commands = [
-        BotCommand(command = "/info", description = "Инфо о создание записи"),
-        BotCommand(command = "/note", description = "Управление записями"),
-        BotCommand(command = "/category", description = "Управление категориями"),
-    ]
+	commands = [
+		BotCommand(command = "/info", description = "Инфо о создание записи"),
+		BotCommand(command = "/note", description = "Управление записями"),
+		BotCommand(command = "/category", description = "Управление категориями"),
+		BotCommand(command = "/cancel", description = "Отмена команды"),
+	]
 
-    await bot.set_my_commands(commands)
+	await bot.set_my_commands(commands)
 
 
 def register_handlers(dp: Dispatcher):
-	dp.register_message_handler(common.process_start_command, commands = ['start'])
+	dp.register_message_handler(common.process_start_command, commands = ['start'], state="*")
 	dp.register_message_handler(common.process_help_command, commands = ["help"])
 	dp.register_message_handler(common.process_info_command, commands = ["info"])
 	dp.register_message_handler(note.process_note_control, commands = ["note"])
 	dp.register_message_handler(category.process_category_control, commands = ["category"])
+	dp.register_message_handler(common.cmd_cancel, commands = ["cancel"], state="*")
+	dp.register_message_handler(common.cmd_cancel, Text(equals = "отмена", ignore_case = True), state = "*")
 
 	dp.register_callback_query_handler(note.process_create_note, lambda c: c.data == 'create_note')
 	dp.register_callback_query_handler(note.process_delete_note, lambda c: c.data == 'delete_note')

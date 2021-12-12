@@ -21,7 +21,6 @@ from dispatcher import session
 import keyboards
 
 
-
 async def process_create_category(callback_query: types.CallbackQuery):
 	await bot.answer_callback_query(callback_query.id)
 
@@ -43,8 +42,8 @@ async def process_create_category_state(msg: types.Message, state: FSMContext):
 			f"Название категория не может начинаться с <b>символов</b> или с <b>цифры</b>!\nПерезапишите название!\n{INFO_TEXT}"
 		)
 
-	elif session.query(Category).filter(
-		Category.title == title and Category.user_id == user_id
+	elif session.query(Category).filter_by(
+		title = title, user_id = user_id
 	).first():
 		await msg.reply("Категория с таким названием уже существует!\nПерезапишите название:")
 
@@ -65,7 +64,7 @@ async def process_view_category(callback_query: types.CallbackQuery):
 	await bot.answer_callback_query(callback_query.id)
 
 	user_id = session.query(User).filter(User.username == callback_query.from_user.username).first().id
-	categories = session.query(Category).filter(Category.user_id == user_id).all()
+	categories = session.query(Category).filter_by(user_id = user_id).all()
 
 	if not categories:
 		await bot.send_message(callback_query.from_user.id, "Категории отсуствуют!")
@@ -74,7 +73,9 @@ async def process_view_category(callback_query: types.CallbackQuery):
 		text = "Категории:\n"
 
 		for category_in in range(0, len(categories)):
-			notes_at_category = len(session.query(Note).filter(Note.category_id == categories[category_in].id).all())
+			notes_at_category = len(session.query(Note).filter_by(
+				category_id = categories[category_in].id, user_id = user_id
+			).all())
 			text += f"\n{category_in + 1}) {categories[category_in].title} ({notes_at_category})"
 
 		await bot.send_message(callback_query.from_user.id, text)
@@ -103,6 +104,7 @@ async def process_delete_category(callback_query: types.CallbackQuery):
 async def process_delete_category_state(msg: types.Message):
 	state = dp.current_state(user = msg.from_user.id)
 	title = msg.text.strip()
+	user_id = session.query(User).filter(User.username == msg.from_user.username).first().id
 
 	if title == "-":
 		await bot.send_message(
@@ -114,7 +116,9 @@ async def process_delete_category_state(msg: types.Message):
 		await state.reset_state()
 
 	else:
-		category_deleted = session.query(Category).filter(Category.title == title).first()
+		category_deleted = session.query(Category).filter_by(
+			title = title, user_id = user_id
+		).first()
 
 		if not category_deleted:
 			await bot.send_message(
