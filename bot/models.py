@@ -43,8 +43,8 @@ class Note(Base):
 	text = Column(Text(LIMIT_TEXT), nullable = False, info = {"limit": LIMIT_TEXT})
 	pub_date = Column(DateTime, default = datetime.now(), nullable = False)
 	user_id = Column(Integer, ForeignKey('user.id'))
-	category = relationship("Category", backref = "note_category", cascade = "all, delete", uselist = False)
-	category_id = Column(Integer, ForeignKey('category.id'), default = False)
+	category = relationship("Category", backref = "note_category", uselist = False)
+	category_id = Column(Integer, ForeignKey('category.id', ondelete = "CASCADE"), default = False)
 
 
 	def __repr__(self):

@@ -7,7 +7,7 @@ from aiogram.dispatcher.filters.state import StatesGroup
 
 
 class FSMFormNote(StatesGroup):
-	"""docstring for FSMFormNote"""
+	"""Состояние для создания записи"""
 
 	title = State()
 	text = State()
@@ -15,21 +15,22 @@ class FSMFormNote(StatesGroup):
 
 
 class FSMFormCategory(StatesGroup):
-	"""docstring for FSMFormCategory"""
+	"""Состояние для создания категории"""
 
 	title = State()
 
 
 class StatesNote(Helper):
-	"""docstring for StatesNote"""
+	"""Состояние для управление над записями"""
 
 	mode = HelperMode.snake_case
 
 	STATE_VIEW_NOTE_ON_CATEGORY = ListItem()
+	STATE_DELETE_NOTE = ListItem()
 
 
 class StatesCategory(Helper):
-	"""docstring for StatesCategory"""
+	"""Состояние для управление над категориями"""
 
 	mode = HelperMode.snake_case
 

@@ -20,8 +20,6 @@ from dispatcher import session
 
 import keyboards
 
-for note in session.query(Note).all():
-	print(note.category_id)
 
 
 async def process_create_category(callback_query: types.CallbackQuery):
@@ -35,6 +33,7 @@ async def process_create_category(callback_query: types.CallbackQuery):
 async def process_create_category_state(msg: types.Message, state: FSMContext):
 	state = dp.current_state(user = msg.from_user.id)
 	title = msg.text.strip()
+	user_id = session.query(User).filter(User.username == msg.from_user.username).first().id
 
 	if len(title) > LIMIT_CATEGORY:
 		await msg.reply(f"Превышен лимит символов!\n{INFO_TEXT}")
@@ -44,13 +43,15 @@ async def process_create_category_state(msg: types.Message, state: FSMContext):
 			f"Название категория не может начинаться с <b>символов</b> или с <b>цифры</b>!\nПерезапишите название!\n{INFO_TEXT}"
 		)
 
-	elif session.query(Category).filter(Category.title == title).first():
+	elif session.query(Category).filter(
+		Category.title == title and Category.user_id == user_id
+	).first():
 		await msg.reply("Категория с таким названием уже существует!\nПерезапишите название:")
 
 	else:
 		new_category = Category(
 			title = msg.text.strip(),
-			user_id = session.query(User).filter(User.username == msg.from_user.username).first().id
+			user_id = user_id
 		)
 
 		session.add(new_category)
@@ -63,7 +64,8 @@ async def process_create_category_state(msg: types.Message, state: FSMContext):
 async def process_view_category(callback_query: types.CallbackQuery):
 	await bot.answer_callback_query(callback_query.id)
 
-	categories = session.query(Category).filter(User.username == callback_query.from_user.username).all()
+	user_id = session.query(User).filter(User.username == callback_query.from_user.username).first().id
+	categories = session.query(Category).filter(Category.user_id == user_id).all()
 
 	if not categories:
 		await bot.send_message(callback_query.from_user.id, "Категории отсуствуют!")
@@ -81,7 +83,8 @@ async def process_view_category(callback_query: types.CallbackQuery):
 async def process_delete_category(callback_query: types.CallbackQuery):
 	await bot.answer_callback_query(callback_query.id)
 
-	categories = session.query(Category).filter(User.username == callback_query.from_user.username).all()
+	user_id = session.query(User).filter(User.username == callback_query.from_user.username).first().id
+	categories = session.query(Category).filter(Category.user_id == user_id).all()
 
 	if not categories:
 		await bot.send_message(callback_query.from_user.id, "Категории для удаления отсуствуют!")

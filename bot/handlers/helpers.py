@@ -26,12 +26,12 @@ def create_text_note(note):
 	text = f"<b>Описание</b> - {note.text}"
 
 	if str(note.title)[0] != "0" and len(note.title) > 0:
-		text = f"<b>Заголовок</b> - {note.title}\n\n{text}"
+		text = f"<b>Заголовок</b> - {note.title}\n{text}"
 
 	if note.category_id:
 		text += f"\n\n<b>Категория</b> - {session.query(Category).filter(Category.id == note.category_id).first().title}"
 
-	text += f"\n\n{pub_date}"
+	text += f"\n\n<b>Идентификатор</b> - {note.id}\n{pub_date}"
 
 	return text
 

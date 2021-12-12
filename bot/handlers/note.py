@@ -80,6 +80,7 @@ async def process_create_note_text_state(msg: types.Message, state: FSMContext):
 
 
 async def process_create_note_category_state(msg: types.Message, state: FSMContext):
+	user_id = session.query(User).filter(User.username == msg.from_user.username).first().id
 	state = dp.current_state(user = msg.from_user.id)
 	title = msg.text.strip()
 
@@ -92,7 +93,9 @@ async def process_create_note_category_state(msg: types.Message, state: FSMConte
 	else:
 		async with state.proxy() as data:
 			if title != "-":
-				data["category"] = session.query(Category).filter(Category.title == title).first().id
+				data["category"] = session.query(Category).filter(
+					Category.title == title and Category.user_id == user_id
+				).first().id
 			else:
 				data["category"] = False
 
@@ -106,7 +109,8 @@ async def process_view_note(callback_query: types.CallbackQuery):
 	await bot.answer_callback_query(callback_query.id)
 
 	state = dp.current_state(user = callback_query.from_user.id)
-	notes = session.query(Note).filter(User.username == callback_query.from_user.username).all()
+	user_id = session.query(User).filter(User.username == callback_query.from_user.username).first().id
+	notes = session.query(Note).filter(Note.user_id == user_id).all()
 
 	await state.reset_state()
 
@@ -125,7 +129,8 @@ async def process_view_note(callback_query: types.CallbackQuery):
 async def process_view_note_on_category(callback_query: types.CallbackQuery):
 	await bot.answer_callback_query(callback_query.id)
 
-	categoies = session.query(Category).filter(User.username == callback_query.from_user.username).all()
+	user_id = session.query(User).filter(User.username == callback_query.from_user.username).first().id
+	categoies = session.query(Category).filter(Category.user_id == user_id).all()
 
 	if not categoies:
 		await bot.send_message(callback_query.from_user.id, "Категории отсуствуют!")
@@ -144,6 +149,7 @@ async def process_view_note_on_category(callback_query: types.CallbackQuery):
 async def process_view_note_on_category_state(msg: types.Message):
 	state = dp.current_state(user = msg.from_user.id)
 	title = msg.text.strip()
+	user_id = session.query(User).filter(User.username == msg.from_user.username).first().id
 
 	if not session.query(Category).filter(Category.title == title).first():
 		await bot.send_message(msg.from_user.id, "Категория с таким названием не существует!\nПерезапишите название:")
@@ -153,7 +159,9 @@ async def process_view_note_on_category_state(msg: types.Message):
 		await state.reset_state()
 
 	else:
-		category_id = session.query(Category).filter(Category.title == title).first().id
+		category_id = session.query(Category).filter(
+			Category.title == title and Category.user_id == user_id
+		).first().id
 		notes = session.query(Note).filter(Note.category_id == category_id).all()
 
 		if not notes:
@@ -168,6 +176,51 @@ async def process_view_note_on_category_state(msg: types.Message):
 				await bot.send_message(msg.from_user.id, text_note)
 
 		await state.reset_state()
+
+
+async def process_delete_note(callback_query: types.CallbackQuery):
+	await bot.answer_callback_query(callback_query.id)
+
+	user_id = session.query(User).filter(User.username == callback_query.from_user.username).first().id
+	notes = session.query(Note).filter(Note.user_id == user_id).all()
+
+	if not notes:
+		await bot.send_message(callback_query.from_user.id, "Записи для удаления отсуствуют!")
+
+	else:
+		state = dp.current_state(user = callback_query.from_user.id)
+		await state.set_state(StatesNote.all()[StatesNote.all().index("state_delete_note")])
+
+		await bot.send_message(callback_query.from_user.id, "Укажите идентификатор:")
+
+
+async def process_delete_note_state(msg: types.Message):
+	state = dp.current_state(user = msg.from_user.id)
+
+	user_id = session.query(User).filter(User.username == msg.from_user.username).first().id
+
+	try:
+		id = int(msg.text.strip())
+	except ValueError:
+		id = False
+
+	if not id:
+		await msg.reply("Неверно указан идентификатор!\nПовторите попытку:")
+
+	else:
+		note_deleted = session.query(Note).filter(
+			Note.id == id and Note.user_id == user_id
+		).first()
+
+		if not note_deleted:
+			await msg.reply("Запись с данным идентификатором не существует!\nПовторите попытку:")
+
+		else:
+			session.delete(note_deleted)
+			session.commit()
+
+			await bot.send_message(msg.from_user.id, "Запись удалена!")
+			await state.reset_state()
 
 
 async def process_note_control(msg: types.Message):
