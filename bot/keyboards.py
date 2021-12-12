@@ -23,16 +23,19 @@ control_notes.add(btn_view_all_note)
 control_notes.add(btn_view_note_on_category)
 
 
-control_categories = InlineKeyboardMarkup()
+control_categories = InlineKeyboardMarkup(row_width = 2)
 
 btn_create_category = InlineKeyboardButton(
-    emoji.emojize("Создать категорию :memo:"), callback_data = "create_category"
+    emoji.emojize("Создать :memo:"), callback_data = "create_category"
+)
+btn_delete_category = InlineKeyboardButton(
+    emoji.emojize("Удалить :wastebasket:"), callback_data = "delete_category"
 )
 btn_view_all_category = InlineKeyboardButton(
     emoji.emojize("Посмотреть все категории :card_file_box:"), callback_data = "view_category"
 )
 
-control_categories.add(btn_create_category)
+control_categories.row(btn_create_category, btn_delete_category)
 control_categories.add(btn_view_all_category)
 
 

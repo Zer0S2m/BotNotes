@@ -12,13 +12,16 @@ from models import (
 )
 
 from state import FSMFormCategory
-from state import FSMFormNote
+from state import StatesCategory
 
 from dispatcher import bot
 from dispatcher import dp
 from dispatcher import session
 
 import keyboards
+
+for note in session.query(Note).all():
+	print(note.category_id)
 
 
 async def process_create_category(callback_query: types.CallbackQuery):
@@ -73,6 +76,60 @@ async def process_view_category(callback_query: types.CallbackQuery):
 			text += f"\n{category_in + 1}) {categories[category_in].title} ({notes_at_category})"
 
 		await bot.send_message(callback_query.from_user.id, text)
+
+
+async def process_delete_category(callback_query: types.CallbackQuery):
+	await bot.answer_callback_query(callback_query.id)
+
+	categories = session.query(Category).filter(User.username == callback_query.from_user.username).all()
+
+	if not categories:
+		await bot.send_message(callback_query.from_user.id, "Категории для удаления отсуствуют!")
+
+	else:
+		state = dp.current_state(user = callback_query.from_user.id)
+		await state.set_state(StatesCategory.all()[StatesCategory.all().index("state_delete_category")])
+
+		await bot.send_message(
+			callback_query.from_user.id,
+			f"Укажите категорию:",
+			reply_markup = keyboards.create_btns_for_choice_categories(categories)
+		)
+
+
+async def process_delete_category_state(msg: types.Message):
+	state = dp.current_state(user = msg.from_user.id)
+	title = msg.text.strip()
+
+	if title == "-":
+		await bot.send_message(
+			msg.from_user.id,
+			f"Команда отменена!",
+			reply_markup = types.ReplyKeyboardRemove()
+		)
+
+		await state.reset_state()
+
+	else:
+		category_deleted = session.query(Category).filter(Category.title == title).first()
+
+		if not category_deleted:
+			await bot.send_message(
+				msg.from_user.id,
+				"Данной категории не существует!\nПерезапишите название:"
+			)
+
+		else:
+			session.delete(category_deleted)
+			session.commit()
+
+			await bot.send_message(
+				msg.from_user.id,
+				f"Категория удалена!",
+				reply_markup = types.ReplyKeyboardRemove()
+			)
+
+			await state.reset_state()
 
 
 async def process_category_control(msg: types.Message):

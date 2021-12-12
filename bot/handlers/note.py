@@ -125,16 +125,20 @@ async def process_view_note(callback_query: types.CallbackQuery):
 async def process_view_note_on_category(callback_query: types.CallbackQuery):
 	await bot.answer_callback_query(callback_query.id)
 
-	state = dp.current_state(user = callback_query.from_user.id)
+	categoies = session.query(Category).filter(User.username == callback_query.from_user.username).all()
 
-	await state.set_state(StatesNote.all()[StatesNote.all().index("state_view_note_on_category")])
-	await bot.send_message(
-		callback_query.from_user.id,
-		"Выберите категорию:",
-		reply_markup = keyboards.create_btns_for_choice_categories(
-			categoies = session.query(Category).filter(User.username == callback_query.from_user.username).all()
+	if not categoies:
+		await bot.send_message(callback_query.from_user.id, "Категории отсуствуют!")
+
+	else:
+		state = dp.current_state(user = callback_query.from_user.id)
+
+		await state.set_state(StatesNote.all()[StatesNote.all().index("state_view_note_on_category")])
+		await bot.send_message(
+			callback_query.from_user.id,
+			"Выберите категорию:",
+			reply_markup = keyboards.create_btns_for_choice_categories(categoies)
 		)
-	)
 
 
 async def process_view_note_on_category_state(msg: types.Message):
