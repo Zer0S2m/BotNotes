@@ -26,8 +26,8 @@ class User(Base):
 	id = Column(Integer, primary_key = True)
 	first_name = Column(String(255), nullable = False)
 	username = Column(String(255), nullable = False)
-	notes = relationship("Note", backref = "user_notes")
-	categories = relationship("Category", backref = "user_categories")
+	notes = relationship("Note", backref = "user_notes", cascade = "all, delete")
+	categories = relationship("Category", backref = "user_categories", cascade = "all, delete")
 
 	def __repr__(self):
 		return f"{self.first_name}: <username: {self.username}>"

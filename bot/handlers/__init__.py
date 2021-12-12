@@ -1,1 +1,3 @@
-from handlers import handlers
+from handlers import common
+from handlers import note
+from handlers import category

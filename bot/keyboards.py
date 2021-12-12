@@ -3,12 +3,20 @@ from aiogram.types import (
     KeyboardButton, InlineKeyboardButton
 )
 
+import emoji
+
 
 control_notes = InlineKeyboardMarkup()
 
-btn_create_note = InlineKeyboardButton('Создать запись', callback_data = "create_note")
-btn_view_all_note = InlineKeyboardButton("Посмотреть все записи", callback_data = "view_note")
-btn_view_note_on_category = InlineKeyboardButton("Посмотреть записи по категории", callback_data = "view_note_on_category")
+btn_create_note = InlineKeyboardButton(
+    emoji.emojize('Создать запись :memo:'), callback_data = "create_note"
+)
+btn_view_all_note = InlineKeyboardButton(
+    emoji.emojize("Посмотреть все записи :card_index_dividers:"), callback_data = "view_note"
+)
+btn_view_note_on_category = InlineKeyboardButton(
+    emoji.emojize("Посмотреть записи по категории :card_file_box:"), callback_data = "view_note_on_category"
+)
 
 control_notes.add(btn_create_note)
 control_notes.add(btn_view_all_note)
@@ -17,8 +25,12 @@ control_notes.add(btn_view_note_on_category)
 
 control_categories = InlineKeyboardMarkup()
 
-btn_create_category = InlineKeyboardButton("Создать категорию", callback_data = "create_category")
-btn_view_all_category = InlineKeyboardButton("Посмотреть все категории", callback_data = "view_category")
+btn_create_category = InlineKeyboardButton(
+    emoji.emojize("Создать категорию :memo:"), callback_data = "create_category"
+)
+btn_view_all_category = InlineKeyboardButton(
+    emoji.emojize("Посмотреть все категории :card_file_box:"), callback_data = "view_category"
+)
 
 control_categories.add(btn_create_category)
 control_categories.add(btn_view_all_category)
