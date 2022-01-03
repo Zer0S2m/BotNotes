@@ -7,7 +7,8 @@ from config import (
 )
 
 from models import (
-	User, Note, Category
+	User, Note, Category,
+	Statistics
 )
 
 from state import StatesNote
@@ -22,12 +23,12 @@ from handlers import helpers
 import keyboards
 
 
-async def process_create_note(callback_query: types.CallbackQuery):
+async def process_create_note(call: types.CallbackQuery):
 	await FSMFormNote.title.set()
 
-	await bot.answer_callback_query(callback_query.id)
+	await bot.answer_callback_query(call.id)
 
-	await bot.send_message(callback_query.from_user.id, "Запишите название записи:")
+	await bot.send_message(call.from_user.id, "Запишите название записи:")
 
 
 async def process_create_note_title_state(msg: types.Message, state: FSMContext):
@@ -106,42 +107,46 @@ async def process_create_note_category_state(msg: types.Message, state: FSMConte
 		await bot.send_message(msg.from_user.id, "Запись создана!", reply_markup = types.ReplyKeyboardRemove())
 
 
-async def process_view_note(callback_query: types.CallbackQuery):
-	await bot.answer_callback_query(callback_query.id)
+async def process_view_note(call: types.CallbackQuery):
+	await bot.answer_callback_query(call.id)
 
-	state = dp.current_state(user = callback_query.from_user.id)
-	user_id = session.query(User).filter(User.username == callback_query.from_user.username).first().id
+	state = dp.current_state(user = call.from_user.id)
+	user_id = session.query(User).filter(User.username == call.from_user.username).first().id
 	notes = session.query(Note).filter(Note.user_id == user_id).all()
 
 	await state.reset_state()
 
 	if not notes:
-		await bot.send_message(callback_query.from_user.id, "Записей нет!")
+		await bot.send_message(call.from_user.id, "Записей нет!")
 
 	else:
-		await bot.send_message(callback_query.from_user.id, "Записи:")
+		await bot.send_message(call.from_user.id, "Записи:")
 
 		for note in notes:
 			text_note = helpers.create_text_note(note)
 
-			await bot.send_message(callback_query.from_user.id, text_note)
+			await bot.send_message(
+				call.from_user.id,
+				text_note,
+				reply_markup = keyboards.create_inline_btns_for_note(note)
+			)
 
 
-async def process_view_note_on_category(callback_query: types.CallbackQuery):
-	await bot.answer_callback_query(callback_query.id)
+async def process_view_note_on_category(call: types.CallbackQuery):
+	await bot.answer_callback_query(call.id)
 
-	user_id = session.query(User).filter(User.username == callback_query.from_user.username).first().id
+	user_id = session.query(User).filter(User.username == call.from_user.username).first().id
 	categoies = session.query(Category).filter(Category.user_id == user_id).all()
 
 	if not categoies:
-		await bot.send_message(callback_query.from_user.id, "Категории отсуствуют!")
+		await bot.send_message(call.from_user.id, "Категории отсуствуют!")
 
 	else:
-		state = dp.current_state(user = callback_query.from_user.id)
+		state = dp.current_state(user = call.from_user.id)
 
 		await state.set_state(StatesNote.all()[StatesNote.all().index("state_view_note_on_category")])
 		await bot.send_message(
-			callback_query.from_user.id,
+			call.from_user.id,
 			"Выберите категорию:",
 			reply_markup = keyboards.create_btns_for_choice_categories(categoies)
 		)
@@ -187,49 +192,20 @@ async def process_view_note_on_category_state(msg: types.Message):
 		await state.reset_state()
 
 
-async def process_delete_note(callback_query: types.CallbackQuery):
-	await bot.answer_callback_query(callback_query.id)
+async def process_delete_note(call: types.CallbackQuery):
+	await bot.answer_callback_query(call.id)
 
-	user_id = session.query(User).filter(User.username == callback_query.from_user.username).first().id
-	notes = session.query(Note).filter(Note.user_id == user_id).all()
+	helpers.delete_note(username = call.from_user.username, data = call.data, action = "delete")
 
-	if not notes:
-		await bot.send_message(callback_query.from_user.id, "Записи для удаления отсуствуют!")
-
-	else:
-		state = dp.current_state(user = callback_query.from_user.id)
-		await state.set_state(StatesNote.all()[StatesNote.all().index("state_delete_note")])
-
-		await bot.send_message(callback_query.from_user.id, "Укажите идентификатор:")
+	await bot.send_message(call.from_user.id, "Запись удалена!")
 
 
-async def process_delete_note_state(msg: types.Message):
-	state = dp.current_state(user = msg.from_user.id)
+async def process_complete_note(call: types.CallbackQuery):
+	await bot.answer_callback_query(call.id)
 
-	user_id = session.query(User).filter(User.username == msg.from_user.username).first().id
+	helpers.delete_note(username = call.from_user.username, data = call.data, action = "complete")
 
-	try:
-		note_id = int(msg.text.strip())
-	except ValueError:
-		note_id = False
-
-	if not note_id:
-		await msg.reply("Неверно указан идентификатор!\nПовторите попытку:")
-
-	else:
-		note_deleted = session.query(Note).filter_by(
-			user_id = user_id, id = note_id
-		).first()
-
-		if not note_deleted:
-			await msg.reply("Запись с данным идентификатором не существует!\nПовторите попытку:")
-
-		else:
-			session.delete(note_deleted)
-			session.commit()
-
-			await bot.send_message(msg.from_user.id, "Запись удалена!")
-			await state.reset_state()
+	await bot.send_message(call.from_user.id, "Заметка завершена!")
 
 
 async def process_note_control(msg: types.Message):

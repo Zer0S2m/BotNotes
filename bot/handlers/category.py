@@ -21,12 +21,12 @@ from dispatcher import session
 import keyboards
 
 
-async def process_create_category(callback_query: types.CallbackQuery):
-	await bot.answer_callback_query(callback_query.id)
+async def process_create_category(call: types.CallbackQuery):
+	await bot.answer_callback_query(call.id)
 
 	await FSMFormCategory.title.set()
 
-	await bot.send_message(callback_query.from_user.id, "Запишите название категории:")
+	await bot.send_message(call.from_user.id, "Запишите название категории:")
 
 
 async def process_create_category_state(msg: types.Message, state: FSMContext):
@@ -60,14 +60,14 @@ async def process_create_category_state(msg: types.Message, state: FSMContext):
 		await msg.reply("Категория создана!")
 
 
-async def process_view_category(callback_query: types.CallbackQuery):
-	await bot.answer_callback_query(callback_query.id)
+async def process_view_category(call: types.CallbackQuery):
+	await bot.answer_callback_query(call.id)
 
-	user_id = session.query(User).filter(User.username == callback_query.from_user.username).first().id
+	user_id = session.query(User).filter(User.username == call.from_user.username).first().id
 	categories = session.query(Category).filter_by(user_id = user_id).all()
 
 	if not categories:
-		await bot.send_message(callback_query.from_user.id, "Категории отсуствуют!")
+		await bot.send_message(call.from_user.id, "Категории отсуствуют!")
 
 	else:
 		text = "Категории:\n"
@@ -78,24 +78,24 @@ async def process_view_category(callback_query: types.CallbackQuery):
 			).all())
 			text += f"\n{category_in + 1}) {categories[category_in].title} ({notes_at_category})"
 
-		await bot.send_message(callback_query.from_user.id, text)
+		await bot.send_message(call.from_user.id, text)
 
 
-async def process_delete_category(callback_query: types.CallbackQuery):
-	await bot.answer_callback_query(callback_query.id)
+async def process_delete_category(call: types.CallbackQuery):
+	await bot.answer_callback_query(call.id)
 
-	user_id = session.query(User).filter(User.username == callback_query.from_user.username).first().id
+	user_id = session.query(User).filter(User.username == call.from_user.username).first().id
 	categories = session.query(Category).filter(Category.user_id == user_id).all()
 
 	if not categories:
-		await bot.send_message(callback_query.from_user.id, "Категории для удаления отсуствуют!")
+		await bot.send_message(call.from_user.id, "Категории для удаления отсуствуют!")
 
 	else:
-		state = dp.current_state(user = callback_query.from_user.id)
+		state = dp.current_state(user = call.from_user.id)
 		await state.set_state(StatesCategory.all()[StatesCategory.all().index("state_delete_category")])
 
 		await bot.send_message(
-			callback_query.from_user.id,
+			call.from_user.id,
 			f"Укажите категорию:",
 			reply_markup = keyboards.create_btns_for_choice_categories(categories)
 		)

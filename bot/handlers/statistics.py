@@ -17,6 +17,7 @@ async def process_statistics_control(msg: types.Message):
 	text = MESSAGES["statistics"].format(
 		total_notes = f"{statistics.total_notes}",
 		completed_notes = f"{statistics.completed_notes}",
+		unfinished_notes = f"{statistics.unfinished_notes}",
 	)
 
 	await bot.send_message(msg.from_user.id, text)

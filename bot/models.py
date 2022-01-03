@@ -75,6 +75,7 @@ class Statistics(Base):
 	user_id = Column(Integer, ForeignKey('user.id'))
 	total_notes = Column(Integer, default = 0)
 	completed_notes = Column(Integer, default = 0)
+	unfinished_notes = Column(Integer, default = 0)
 
 
 	def __repr__(self):

@@ -42,7 +42,8 @@ def register_handlers(dp: Dispatcher):
 	dp.register_message_handler(common.cmd_cancel, Text(equals = "отмена", ignore_case = True), state = "*")
 
 	dp.register_callback_query_handler(note.process_create_note, lambda c: c.data == 'create_note')
-	dp.register_callback_query_handler(note.process_delete_note, lambda c: c.data == 'delete_note')
+	dp.register_callback_query_handler(note.process_delete_note, text_contains = 'delete_note_')
+	dp.register_callback_query_handler(note.process_complete_note, text_contains = 'complete_note_')
 	dp.register_callback_query_handler(note.process_view_note, lambda c: c.data == 'view_note')
 	dp.register_callback_query_handler(note.process_view_note_on_category, lambda c: c.data == 'view_note_on_category')
 	dp.register_callback_query_handler(category.process_create_category, lambda c: c.data == 'create_category')
@@ -53,7 +54,6 @@ def register_handlers(dp: Dispatcher):
 	dp.register_message_handler(note.process_create_note_text_state, state = FSMFormNote.text)
 	dp.register_message_handler(note.process_create_note_category_state, state = FSMFormNote.category)
 	dp.register_message_handler(note.process_view_note_on_category_state, state = StatesNote.STATE_VIEW_NOTE_ON_CATEGORY)
-	dp.register_message_handler(note.process_delete_note_state, state = StatesNote.STATE_DELETE_NOTE)
 	dp.register_message_handler(category.process_create_category_state, state = FSMFormCategory.title)
 	dp.register_message_handler(category.process_delete_category_state, state = StatesCategory.STATE_DELETE_CATEGORY)
 

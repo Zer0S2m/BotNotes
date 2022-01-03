@@ -1,4 +1,4 @@
-TOKEN = "5017770138:AAFd4QWaw3p3Gso1EbZ-XRgExI9oo4fHdZU"
+TOKEN = ""
 NAME_DB = "db_bot"
 
 LIMIT_TITLE = 255
@@ -18,6 +18,7 @@ MESSAGES = {
 		/note - управление заметками
 		/category - управление категориями
 		/info - информация о создании заметки
+		/statistics - статистика
 		/cancel - отмена команды
 	""".replace('\t', ''),
 	"info": f"""
@@ -33,5 +34,6 @@ MESSAGES = {
 		<b>Статистика</b>\n
 		Всего заметок: <b>{total_notes}</b>
 		Завершённых заметок: <b>{completed_notes}</b>
+		Незавершённых заметок: <b>{unfinished_notes}</b>
 	""".replace('\t', ''),
 }

@@ -21,7 +21,6 @@ def create_table_statistics(username):
 		new_statistics = Statistics(user_id = user_id)
 		session.add(new_statistics)
 		session.commit()
-		print(True)
 
 
 async def process_start_command(msg: types.Message, state: FSMContext):

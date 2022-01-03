@@ -26,7 +26,6 @@ class StatesNote(Helper):
 	mode = HelperMode.snake_case
 
 	STATE_VIEW_NOTE_ON_CATEGORY = ListItem()
-	STATE_DELETE_NOTE = ListItem()
 
 
 class StatesCategory(Helper):
