@@ -4,10 +4,24 @@ from aiogram.dispatcher import FSMContext
 from config import MESSAGES
 
 from models import User
+from models import Statistics
 
 from dispatcher import dp
 from dispatcher import bot
 from dispatcher import session
+
+
+def create_table_statistics(username):
+	if not session.query(Statistics).filter(
+			Statistics.user_id == session.query(User).filter(User.username == username).first().id
+		).first():
+
+		user_id = session.query(User).filter(User.username == username).first().id
+
+		new_statistics = Statistics(user_id = user_id)
+		session.add(new_statistics)
+		session.commit()
+		print(True)
 
 
 async def process_start_command(msg: types.Message, state: FSMContext):
@@ -19,6 +33,8 @@ async def process_start_command(msg: types.Message, state: FSMContext):
 
 		session.add(new_user)
 		session.commit()
+
+	create_table_statistics(username = msg.from_user.username)
 
 	await bot.send_message(msg.from_user.id, MESSAGES["start"].format(name = msg.from_user.first_name))
 

@@ -5,9 +5,10 @@ from aiogram import Bot
 from aiogram.types import BotCommand
 from aiogram.dispatcher.filters import Text
 
-from handlers import common
-from handlers import note
-from handlers import category
+from handlers import (
+	common, note, category,
+	statistics
+)
 
 from dispatcher import dp
 from dispatcher import bot
@@ -23,6 +24,7 @@ async def set_commands(bot: Bot):
 		BotCommand(command = "/info", description = "Инфо о создание записи"),
 		BotCommand(command = "/note", description = "Управление записями"),
 		BotCommand(command = "/category", description = "Управление категориями"),
+		BotCommand(command = "/statistics", description = "Статистика"),
 		BotCommand(command = "/cancel", description = "Отмена команды"),
 	]
 
@@ -35,6 +37,7 @@ def register_handlers(dp: Dispatcher):
 	dp.register_message_handler(common.process_info_command, commands = ["info"])
 	dp.register_message_handler(note.process_note_control, commands = ["note"])
 	dp.register_message_handler(category.process_category_control, commands = ["category"])
+	dp.register_message_handler(statistics.process_statistics_control, commands = ["statistics"])
 	dp.register_message_handler(common.cmd_cancel, commands = ["cancel"], state="*")
 	dp.register_message_handler(common.cmd_cancel, Text(equals = "отмена", ignore_case = True), state = "*")
 

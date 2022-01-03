@@ -28,9 +28,10 @@ class User(Base):
 	username = Column(String(255), nullable = False)
 	notes = relationship("Note", backref = "user_notes", cascade = "all, delete")
 	categories = relationship("Category", backref = "user_categories", cascade = "all, delete")
+	statistics = relationship("Statistics", backref = "user_statistics", cascade = "all, delete")
 
 	def __repr__(self):
-		return f"{self.first_name}: <username: {self.username}>"
+		return f"<{self.first_name}> - <username: {self.username}>"
 
 
 class Note(Base):
@@ -63,3 +64,18 @@ class Category(Base):
 
 	def __repr__(self):
 		return f"<id-user: {self.user_id}> - <title-category: {self.title}>"
+
+
+class Statistics(Base):
+	"""docstring for Statistics"""
+
+	__tablename__ = "statistics"
+
+	id = Column(Integer, primary_key = True)
+	user_id = Column(Integer, ForeignKey('user.id'))
+	total_notes = Column(Integer, default = 0)
+	completed_notes = Column(Integer, default = 0)
+
+
+	def __repr__(self):
+		return f"<id-user: {self.user_id}> - <id: {self.id}>"
