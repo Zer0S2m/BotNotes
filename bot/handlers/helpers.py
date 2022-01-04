@@ -8,7 +8,7 @@ from models import (
 from dispatcher import session
 
 
-def add_db_new_note(data, username):
+def add_db_new_note(data: dict, username: str):
 	user_id = session.query(User).filter(User.username == username).first().id
 	new_note = Note(
 		text = data["text"],
@@ -29,7 +29,7 @@ def add_db_new_note(data, username):
 	session.commit()
 
 
-def create_text_note(note):
+def create_text_note(note: Note) -> str:
 	pub_date = get_pub_date_note(date = session.query(Note).first().pub_date)
 	text = f"<b>Описание</b> - {note.text}"
 
@@ -44,11 +44,11 @@ def create_text_note(note):
 	return text
 
 
-def get_pub_date_note(date):
+def get_pub_date_note(date: str) -> str:
 	return f'{date.strftime("%d.%m.%Y")} {date.strftime("%H:%M")}'
 
 
-def delete_note(username, data, action):
+def delete_note(username: str, data: str, action: str):
 	user_id = session.query(User).filter(User.username == username).first().id
 	note_id = re.search(r"\d{1,10}", data).group(0)
 

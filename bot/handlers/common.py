@@ -11,7 +11,7 @@ from dispatcher import bot
 from dispatcher import session
 
 
-def create_table_statistics(username):
+def create_table_statistics(username: str):
 	if not session.query(Statistics).filter(
 			Statistics.user_id == session.query(User).filter(User.username == username).first().id
 		).first():

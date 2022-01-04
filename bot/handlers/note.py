@@ -187,7 +187,11 @@ async def process_view_note_on_category_state(msg: types.Message):
 			for note in notes:
 				text_note = helpers.create_text_note(note)
 
-				await bot.send_message(msg.from_user.id, text_note)
+				await bot.send_message(
+					msg.from_user.id,
+					text_note,
+					reply_markup = keyboards.create_inline_btns_for_note(note)
+				)
 
 		await state.reset_state()
 
@@ -197,6 +201,7 @@ async def process_delete_note(call: types.CallbackQuery):
 
 	helpers.delete_note(username = call.from_user.username, data = call.data, action = "delete")
 
+	await bot.delete_message(chat_id = call.from_user.id, message_id = call.message.message_id)
 	await bot.send_message(call.from_user.id, "Запись удалена!")
 
 
@@ -205,6 +210,7 @@ async def process_complete_note(call: types.CallbackQuery):
 
 	helpers.delete_note(username = call.from_user.username, data = call.data, action = "complete")
 
+	await bot.delete_message(chat_id = call.from_user.id, message_id = call.message.message_id)
 	await bot.send_message(call.from_user.id, "Заметка завершена!")
 
 

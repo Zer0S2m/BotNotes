@@ -5,6 +5,8 @@ from aiogram.types import (
 
 import emoji
 
+from models import Note
+
 
 control_notes = InlineKeyboardMarkup(row_width = 2)
 
@@ -39,7 +41,7 @@ control_categories.row(btn_create_category, btn_delete_category)
 control_categories.add(btn_view_all_category)
 
 
-def create_btns_for_choice_categories(categoies):
+def create_btns_for_choice_categories(categoies: list) -> ReplyKeyboardMarkup:
     if not categoies:
         return False
 
@@ -60,7 +62,7 @@ def create_btns_for_choice_categories(categoies):
     return control_choice_category
 
 
-def create_inline_btns_for_note(note):
+def create_inline_btns_for_note(note: Note) -> InlineKeyboardMarkup:
     control_note = InlineKeyboardMarkup(row_width = 2)
 
     btn_delete_note = InlineKeyboardButton(
@@ -69,7 +71,6 @@ def create_inline_btns_for_note(note):
     btn_complete_note = InlineKeyboardButton(
         emoji.emojize('Завершить :check_mark_button:'), callback_data = f"complete_note_{note.id}"
     )
-
     control_note.row(btn_delete_note, btn_complete_note)
 
     return control_note
