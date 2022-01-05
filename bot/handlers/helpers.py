@@ -30,7 +30,9 @@ def add_db_new_note(data: dict, username: str):
 
 
 def create_text_note(note: Note) -> str:
-	pub_date = get_pub_date_note(date = session.query(Note).first().pub_date)
+	pub_date = get_pub_date_note(
+		date = session.query(Note).filter(Note.id == note.id).first().pub_date
+	)
 	text = f"<b>Описание</b> - {note.text}"
 
 	if str(note.title)[0] != "0" and len(note.title) > 0:

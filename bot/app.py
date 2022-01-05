@@ -32,7 +32,7 @@ async def set_commands(bot: Bot):
 
 
 def register_handlers(dp: Dispatcher):
-	dp.register_message_handler(common.process_start_command, commands = ['start'], state="*")
+	dp.register_message_handler(common.process_start_command, commands = ['start'], state = "*")
 	dp.register_message_handler(common.process_help_command, commands = ["help"])
 	dp.register_message_handler(common.process_info_command, commands = ["info"])
 	dp.register_message_handler(note.process_note_control, commands = ["note"])
@@ -53,6 +53,7 @@ def register_handlers(dp: Dispatcher):
 	dp.register_message_handler(note.process_create_note_title_state, state = FSMFormNote.title)
 	dp.register_message_handler(note.process_create_note_text_state, state = FSMFormNote.text)
 	dp.register_message_handler(note.process_create_note_category_state, state = FSMFormNote.category)
+	dp.register_message_handler(note.process_create_date_completion, state = FSMFormNote.date_completion)
 	dp.register_message_handler(note.process_view_note_on_category_state, state = StatesNote.STATE_VIEW_NOTE_ON_CATEGORY)
 	dp.register_message_handler(category.process_create_category_state, state = FSMFormCategory.title)
 	dp.register_message_handler(category.process_delete_category_state, state = StatesCategory.STATE_DELETE_CATEGORY)

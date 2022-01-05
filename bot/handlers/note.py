@@ -73,12 +73,17 @@ async def process_create_note_text_state(msg: types.Message, state: FSMContext):
 			)
 
 		else:
+			await FSMFormNote.next()
+			await FSMFormNote.next()
+
 			async with state.proxy() as data:
 				data['category'] = False
-				helpers.add_db_new_note(data = data, username = msg.from_user.username)
 
-			await state.finish()
-			await bot.send_message(msg.from_user.id, "Запись создана!")
+			await bot.send_message(
+				msg.from_user.id,
+				"Выберите дату, по истечению времени выполнения заметки:",
+				reply_markup = keyboards.create_inline_btns_for_choice_date()
+			)
 
 
 async def process_create_note_category_state(msg: types.Message, state: FSMContext):
@@ -101,10 +106,22 @@ async def process_create_note_category_state(msg: types.Message, state: FSMConte
 			else:
 				data["category"] = False
 
-			helpers.add_db_new_note(data = data, username = msg.from_user.username)
+		await FSMFormNote.next()
 
-		await state.finish()
-		await bot.send_message(msg.from_user.id, "Запись создана!", reply_markup = types.ReplyKeyboardRemove())
+		await bot.send_message(
+			msg.from_user.id,
+			"Выберите дату по истечению времени выполнения заметки:",
+			reply_markup = keyboards.create_inline_btns_for_choice_date()
+		)
+
+
+async def process_create_date_completion(msg: types.Message, state: FSMContext):
+
+	async with state.proxy() as data:
+		helpers.add_db_new_note(data = data, username = msg.from_user.username)
+
+	await state.finish()
+	await bot.send_message(msg.from_user.id, "Запись создана!", reply_markup = types.ReplyKeyboardRemove())
 
 
 async def process_view_note(call: types.CallbackQuery):

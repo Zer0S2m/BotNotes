@@ -12,6 +12,7 @@ class FSMFormNote(StatesGroup):
 	title = State()
 	text = State()
 	category = State()
+	date_completion = State()
 
 
 class FSMFormCategory(StatesGroup):
