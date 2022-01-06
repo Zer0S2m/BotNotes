@@ -1,4 +1,5 @@
 import re
+import datetime
 
 from models import (
 	User, Note, Category,
@@ -15,11 +16,15 @@ def add_db_new_note(data: dict, username: str):
 		user_id = user_id
 	)
 
-	if data["title"]:
+	if "title" in data:
 		new_note.title = data["title"]
 
-	if data["category"]:
+	if "category" in data:
 		new_note.category_id = data["category"]
+
+	if ("number_day" in data) and ("number_month" in data) and ("number_year" in data):
+		complete_date = datetime.date(data["number_year"], data["number_month"], data["number_day"])
+		new_note.complete_date = complete_date
 
 	session.add(new_note)
 
@@ -41,12 +46,19 @@ def create_text_note(note: Note) -> str:
 	if note.category_id:
 		text += f"\n\n<b>Категория</b> - {session.query(Category).filter(Category.id == note.category_id).first().title}"
 
+	if str(note.complete_date)[0] != "0" and len(note.complete_date) > 0:
+		complete_date_split = list(map(int, note.complete_date.split("-")))
+		complete_date = get_pub_date_note(date = datetime.datetime(*complete_date_split))
+		complete_date = re.sub(r"\s\d{0,2}:\d{0,2}", "", complete_date)
+
+		text += f"\n\n<b>Дата завершения</b> - {complete_date}"
+
 	text += f"\n\n{pub_date}"
 
 	return text
 
 
-def get_pub_date_note(date: str) -> str:
+def get_pub_date_note(date: datetime.datetime) -> str:
 	return f'{date.strftime("%d.%m.%Y")} {date.strftime("%H:%M")}'
 
 

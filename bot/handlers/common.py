@@ -1,6 +1,8 @@
 from aiogram import types
 from aiogram.dispatcher import FSMContext
 
+import emoji
+
 from config import MESSAGES
 
 from models import User
@@ -54,4 +56,4 @@ async def process_info_command(msg: types.Message):
 
 async def cmd_cancel(msg: types.Message, state: FSMContext):
     await state.finish()
-    await msg.answer("Команда отменена!", reply_markup = types.ReplyKeyboardRemove())
+    await msg.answer(emoji.emojize("Команда отменена :cross_mark:"), reply_markup = types.ReplyKeyboardRemove())

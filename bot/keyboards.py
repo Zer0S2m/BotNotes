@@ -106,7 +106,11 @@ def create_inline_btns_for_choice_date() -> InlineKeyboardMarkup:
 			date_choice.append(date_btn)
 
 	for day in range(0, days_current_month):
-		date_btn = InlineKeyboardButton(f"{day + 1}", callback_data = f"choice_date_{day + 1}")
+		# В "callback_data" передаётся номер дня, номер месяца и номер года
+		date_btn = InlineKeyboardButton(
+			f"{day + 1}",
+			callback_data = f"choice_date_day:{day + 1}|month:{datetime.datetime.now().month}|year:{datetime.datetime.now().year}"
+		)
 		date_choice.append(date_btn)
 
 	for day in range(last_day_month, 6):

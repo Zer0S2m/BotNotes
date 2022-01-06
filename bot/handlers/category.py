@@ -3,6 +3,8 @@ import re
 from aiogram import types
 from aiogram.dispatcher import FSMContext
 
+import emoji
+
 from config import (
 	INFO_TEXT, LIMIT_CATEGORY
 )
@@ -109,7 +111,7 @@ async def process_delete_category_state(msg: types.Message):
 	if title == "-":
 		await bot.send_message(
 			msg.from_user.id,
-			f"Команда отменена!",
+			emoji.emojize("Команда отменена :cross_mark:"),
 			reply_markup = types.ReplyKeyboardRemove()
 		)
 
@@ -132,7 +134,7 @@ async def process_delete_category_state(msg: types.Message):
 
 			await bot.send_message(
 				msg.from_user.id,
-				f"Категория удалена!",
+				emoji.emojize("Категория удалена :cross_mark:"),
 				reply_markup = types.ReplyKeyboardRemove()
 			)
 

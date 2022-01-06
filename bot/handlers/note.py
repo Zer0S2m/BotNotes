@@ -1,9 +1,16 @@
+import re
+
+from datetime import datetime
+
 from aiogram import types
 from aiogram.dispatcher import FSMContext
 
+import emoji
+
 from config import (
 	LIMIT_TITLE, LIMIT_TEXT,
-	INFO_TEXT, LIMIT_CATEGORY
+	INFO_TEXT, LIMIT_CATEGORY,
+	MONTHS
 )
 
 from models import (
@@ -76,12 +83,9 @@ async def process_create_note_text_state(msg: types.Message, state: FSMContext):
 			await FSMFormNote.next()
 			await FSMFormNote.next()
 
-			async with state.proxy() as data:
-				data['category'] = False
-
 			await bot.send_message(
 				msg.from_user.id,
-				"Выберите дату, по истечению времени выполнения заметки:",
+				f"Выберите дату по истечению времени выполнения заметки:\n<b>--{MONTHS[str(datetime.now().month)]}--</b>",
 				reply_markup = keyboards.create_inline_btns_for_choice_date()
 			)
 
@@ -103,25 +107,34 @@ async def process_create_note_category_state(msg: types.Message, state: FSMConte
 				data["category"] = session.query(Category).filter_by(
 					title = title, user_id = user_id
 				).first().id
-			else:
-				data["category"] = False
 
 		await FSMFormNote.next()
 
 		await bot.send_message(
 			msg.from_user.id,
-			"Выберите дату по истечению времени выполнения заметки:",
+			f"Выберите дату по истечению времени выполнения заметки:\n<b>--{MONTHS[str(datetime.now().month)]}--</b>",
 			reply_markup = keyboards.create_inline_btns_for_choice_date()
 		)
 
 
-async def process_create_date_completion(msg: types.Message, state: FSMContext):
+async def process_create_note_date_completion_state(call: types.CallbackQuery, state: FSMContext):
+	await bot.answer_callback_query(call.id)
+
+	if re.search(r"day:(\d{0,2})", call.data):
+		number_day = int(re.search(r"day:(\d{0,2})", call.data).group(1))
+		number_month = int(re.search(r"month:(\d{0,2})", call.data).group(1))
+		number_year = int(re.search(r"year:(\d{0,4})", call.data).group(1))
+
+		async with state.proxy() as data:
+			data["number_day"] = number_day
+			data["number_month"] = number_month
+			data["number_year"] = number_year
 
 	async with state.proxy() as data:
-		helpers.add_db_new_note(data = data, username = msg.from_user.username)
+		helpers.add_db_new_note(data = data, username = call.from_user.username)
 
 	await state.finish()
-	await bot.send_message(msg.from_user.id, "Запись создана!", reply_markup = types.ReplyKeyboardRemove())
+	await bot.send_message(call.from_user.id, "Запись создана!", reply_markup = types.ReplyKeyboardRemove())
 
 
 async def process_view_note(call: types.CallbackQuery):
@@ -219,7 +232,7 @@ async def process_delete_note(call: types.CallbackQuery):
 	helpers.delete_note(username = call.from_user.username, data = call.data, action = "delete")
 
 	await bot.delete_message(chat_id = call.from_user.id, message_id = call.message.message_id)
-	await bot.send_message(call.from_user.id, "Запись удалена!")
+	await bot.send_message(call.from_user.id, emoji.emojize("Запись удалена :cross_mark:"))
 
 
 async def process_complete_note(call: types.CallbackQuery):
@@ -228,7 +241,7 @@ async def process_complete_note(call: types.CallbackQuery):
 	helpers.delete_note(username = call.from_user.username, data = call.data, action = "complete")
 
 	await bot.delete_message(chat_id = call.from_user.id, message_id = call.message.message_id)
-	await bot.send_message(call.from_user.id, "Заметка завершена!")
+	await bot.send_message(call.from_user.id, emoji.emojize("Заметка завершена :check_mark_button:"))
 
 
 async def process_note_control(msg: types.Message):

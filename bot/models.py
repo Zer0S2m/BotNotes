@@ -43,6 +43,7 @@ class Note(Base):
 	title = Column(String(LIMIT_TITLE), default = False, info = {"limit": LIMIT_TITLE})
 	text = Column(Text(LIMIT_TEXT), nullable = False, info = {"limit": LIMIT_TEXT})
 	pub_date = Column(DateTime, default = datetime.now(), nullable = False)
+	complete_date = Column(String, default = False, nullable = False)
 	user_id = Column(Integer, ForeignKey('user.id'))
 	category = relationship("Category", backref = "note_category", uselist = False)
 	category_id = Column(Integer, ForeignKey('category.id', ondelete = "CASCADE"), default = False)
