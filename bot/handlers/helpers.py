@@ -8,6 +8,8 @@ from models import (
 
 from dispatcher import session
 
+from config import DATE
+
 
 def add_db_new_note(data: dict, username: str):
 	user_id = session.query(User).filter(User.username == username).first().id
@@ -60,6 +62,24 @@ def create_text_note(note: Note) -> str:
 
 def get_pub_date_note(date: datetime.datetime) -> str:
 	return f'{date.strftime("%d.%m.%Y")} {date.strftime("%H:%M")}'
+
+
+def change_dict_date(data: dict):
+	""":param data - key: 'month'"""
+	
+	if data["month"] == 0:
+		DATE["month"] = 12
+		DATE["year"] = DATE["year"] - 1
+	elif data["month"] == 13:
+		DATE["month"] = 1
+		DATE["year"] = DATE["year"] + 1
+	else:
+		DATE["month"] = data["month"]
+
+def cleans_dict_date():
+	DATE["day"] = datetime.datetime.now().day
+	DATE["month"] = datetime.datetime.now().month
+	DATE["year"] = datetime.datetime.now().year
 
 
 def delete_note(username: str, data: str, action: str):

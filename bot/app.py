@@ -49,6 +49,9 @@ def register_handlers(dp: Dispatcher):
 	)
 	dp.register_callback_query_handler(note.process_view_note, lambda c: c.data == 'view_note')
 	dp.register_callback_query_handler(note.process_view_note_on_category, lambda c: c.data == 'view_note_on_category')
+	dp.register_callback_query_handler(
+		note.process_view_prev_next_month_date, text_contains = 'month_date_action', state = FSMFormNote.date_completion
+	)
 	dp.register_callback_query_handler(category.process_create_category, lambda c: c.data == 'create_category')
 	dp.register_callback_query_handler(category.process_delete_category, lambda c: c.data == 'delete_category')
 	dp.register_callback_query_handler(category.process_view_category, lambda c: c.data == 'view_category')

@@ -9,6 +9,8 @@ import emoji
 
 from models import Note
 
+from config import DATE
+
 
 control_notes = InlineKeyboardMarkup(row_width = 2)
 
@@ -82,10 +84,10 @@ def create_inline_btns_for_choice_date() -> InlineKeyboardMarkup:
 	control_note_date = InlineKeyboardMarkup(row_width = 7)
 
 	btn_prev_month_date = InlineKeyboardButton(
-		emoji.emojize(":left_arrow: Прошлый"), callback_data = "prev_month_date"
+		emoji.emojize(":left_arrow: Прошлый"), callback_data = "month_date_action:prev"
 	)
 	btn_next_month_date = InlineKeyboardButton(
-		emoji.emojize("Следующий :right_arrow:"), callback_data = "next_month_date"
+		emoji.emojize("Следующий :right_arrow:"), callback_data = "month_date_action:next"
 	)
 	btn_not_date = InlineKeyboardButton(
 		emoji.emojize("Без выбора даты :calendar:"), callback_data = "choice_date_not"
@@ -93,12 +95,9 @@ def create_inline_btns_for_choice_date() -> InlineKeyboardMarkup:
 
 	date_choice = []
 
-	current_day = datetime.datetime.now().day
-	days_current_month = last_day_of_month(datetime.date(datetime.datetime.now().year, datetime.datetime.now().month, 1)).day
-	first_day_month = datetime.datetime(datetime.datetime.now().year, datetime.datetime.now().month, 1).weekday()
-	last_day_month = datetime.datetime(
-		datetime.datetime.now().year, datetime.datetime.now().month, days_current_month
-	).weekday()
+	days_current_month = last_day_of_month(datetime.date(DATE["year"], DATE["month"], 1)).day
+	first_day_month = datetime.date(DATE["year"], DATE["month"], 1).weekday()
+	last_day_month = datetime.date(DATE["year"], DATE["month"], days_current_month).weekday()
 
 	if first_day_month != 0:
 		for day in range(0, first_day_month):
@@ -109,7 +108,7 @@ def create_inline_btns_for_choice_date() -> InlineKeyboardMarkup:
 		# В "callback_data" передаётся номер дня, номер месяца и номер года
 		date_btn = InlineKeyboardButton(
 			f"{day + 1}",
-			callback_data = f"choice_date_day:{day + 1}|month:{datetime.datetime.now().month}|year:{datetime.datetime.now().year}"
+			callback_data = f"choice_date_day:{day + 1}|month:{DATE['month']}|year:{DATE['year']}"
 		)
 		date_choice.append(date_btn)
 

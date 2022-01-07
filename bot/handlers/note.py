@@ -1,6 +1,5 @@
 import re
-
-from datetime import datetime
+import datetime
 
 from aiogram import types
 from aiogram.dispatcher import FSMContext
@@ -10,12 +9,11 @@ import emoji
 from config import (
 	LIMIT_TITLE, LIMIT_TEXT,
 	INFO_TEXT, LIMIT_CATEGORY,
-	MONTHS
+	MONTHS, DATE
 )
 
 from models import (
-	User, Note, Category,
-	Statistics
+	User, Note, Category
 )
 
 from state import StatesNote
@@ -83,11 +81,7 @@ async def process_create_note_text_state(msg: types.Message, state: FSMContext):
 			await FSMFormNote.next()
 			await FSMFormNote.next()
 
-			await bot.send_message(
-				msg.from_user.id,
-				f"Выберите дату по истечению времени выполнения заметки:\n<b>--{MONTHS[str(datetime.now().month)]}--</b>",
-				reply_markup = keyboards.create_inline_btns_for_choice_date()
-			)
+			await send_message_date_calendar(id = msg.from_user.id)
 
 
 async def process_create_note_category_state(msg: types.Message, state: FSMContext):
@@ -110,15 +104,11 @@ async def process_create_note_category_state(msg: types.Message, state: FSMConte
 
 		await FSMFormNote.next()
 
-		await bot.send_message(
-			msg.from_user.id,
-			f"Выберите дату по истечению времени выполнения заметки:\n<b>--{MONTHS[str(datetime.now().month)]}--</b>",
-			reply_markup = keyboards.create_inline_btns_for_choice_date()
-		)
+		await send_message_date_calendar(id = msg.from_user.id)
 
 
 async def process_create_note_date_completion_state(call: types.CallbackQuery, state: FSMContext):
-	await bot.answer_callback_query(call.id)
+	answer_text = ""
 
 	if re.search(r"day:(\d{0,2})", call.data):
 		number_day = int(re.search(r"day:(\d{0,2})", call.data).group(1))
@@ -130,11 +120,39 @@ async def process_create_note_date_completion_state(call: types.CallbackQuery, s
 			data["number_month"] = number_month
 			data["number_year"] = number_year
 
+		choice_date = helpers.get_pub_date_note(
+			date = datetime.datetime(DATE['year'], DATE['month'], DATE['day'])
+		)
+		choice_date = re.sub(r"\s\d{0,2}:\d{0,2}", "", choice_date)
+		answer_text = f"Вы выбрали: {choice_date}"
+
 	async with state.proxy() as data:
 		helpers.add_db_new_note(data = data, username = call.from_user.username)
 
+	helpers.cleans_dict_date()
+
+	await bot.answer_callback_query(call.id, text = answer_text)
 	await state.finish()
 	await bot.send_message(call.from_user.id, "Запись создана!", reply_markup = types.ReplyKeyboardRemove())
+
+
+async def process_view_prev_next_month_date(call: types.CallbackQuery):
+	await bot.answer_callback_query(call.id)
+
+	action = re.search(r":(\w{0,10})", call.data).group(1)
+
+	await bot.delete_message(chat_id = call.from_user.id, message_id = call.message.message_id)
+
+	if action == "prev":
+		helpers.change_dict_date({
+			"month": DATE["month"] - 1,
+		})
+	elif action == "next":
+		helpers.change_dict_date({
+			"month": DATE["month"] + 1,
+		})
+
+	await send_message_date_calendar(id = call.from_user.id)
 
 
 async def process_view_note(call: types.CallbackQuery):
@@ -250,3 +268,11 @@ async def process_note_control(msg: types.Message):
 		f"Управление записями",
 		reply_markup = keyboards.control_notes
 	)
+
+
+async def send_message_date_calendar(id: int):
+	await bot.send_message(
+        id,
+        f"Выберите дату по истечению времени выполнения заметки:\n<b>-- {MONTHS[str(DATE['month'])].upper()} --</b>",
+        reply_markup = keyboards.create_inline_btns_for_choice_date()
+    )

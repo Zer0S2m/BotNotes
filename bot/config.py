@@ -1,4 +1,7 @@
-TOKEN = ""
+from datetime import datetime
+
+
+TOKEN = "5017770138:AAH9vs6N6JjGMDaYc-f6z4lPuumexosdfA0"
 NAME_DB = "db_bot"
 
 LIMIT_TITLE = 255
@@ -36,6 +39,12 @@ MESSAGES = {
 		Завершённых заметок: <b>{completed_notes}</b>
 		Незавершённых заметок: <b>{unfinished_notes}</b>
 	""".replace('\t', ''),
+}
+
+DATE = {
+	"day": datetime.now().day,
+	"month": datetime.now().month,
+	"year": datetime.now().year,
 }
 
 MONTHS = {
