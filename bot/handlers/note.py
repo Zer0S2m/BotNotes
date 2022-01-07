@@ -154,6 +154,13 @@ async def process_view_prev_next_month_date(call: types.CallbackQuery):
 
 	await send_message_date_calendar(id = call.from_user.id)
 
+async def send_message_date_calendar(id: int):
+	await bot.send_message(
+        id,
+        f"Выберите дату по истечению времени выполнения заметки:\n<b>-- {MONTHS[str(DATE['month'])].upper()} --</b>",
+        reply_markup = keyboards.create_inline_btns_for_choice_date()
+    )
+
 
 async def process_view_note(call: types.CallbackQuery):
 	await bot.answer_callback_query(call.id)
@@ -270,9 +277,20 @@ async def process_note_control(msg: types.Message):
 	)
 
 
-async def send_message_date_calendar(id: int):
-	await bot.send_message(
-        id,
-        f"Выберите дату по истечению времени выполнения заметки:\n<b>-- {MONTHS[str(DATE['month'])].upper()} --</b>",
-        reply_markup = keyboards.create_inline_btns_for_choice_date()
-    )
+def reqister_handler_note():
+	dp.register_message_handler(process_create_note_title_state, state = FSMFormNote.title)
+	dp.register_message_handler(process_create_note_text_state, state = FSMFormNote.text)
+	dp.register_message_handler(process_create_note_category_state, state = FSMFormNote.category)
+	dp.register_message_handler(process_view_note_on_category_state, state = StatesNote.STATE_VIEW_NOTE_ON_CATEGORY)
+
+	dp.register_callback_query_handler(process_create_note, lambda c: c.data == 'create_note')
+	dp.register_callback_query_handler(process_delete_note, text_contains = 'delete_note_')
+	dp.register_callback_query_handler(process_complete_note, text_contains = 'complete_note_')
+	dp.register_callback_query_handler(
+		process_create_note_date_completion_state, text_contains = 'choice_date_', state = FSMFormNote.date_completion
+	)
+	dp.register_callback_query_handler(process_view_note, lambda c: c.data == 'view_note')
+	dp.register_callback_query_handler(process_view_note_on_category, lambda c: c.data == 'view_note_on_category')
+	dp.register_callback_query_handler(
+		process_view_prev_next_month_date, text_contains = 'month_date_action', state = FSMFormNote.date_completion
+	)

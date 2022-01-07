@@ -147,3 +147,11 @@ async def process_category_control(msg: types.Message):
 		f"Управление категориями",
 		reply_markup = keyboards.control_categories
 	)
+
+
+def	reqister_handler_category():
+	dp.register_callback_query_handler(process_create_category, lambda c: c.data == 'create_category')
+	dp.register_callback_query_handler(process_delete_category, lambda c: c.data == 'delete_category')
+	dp.register_callback_query_handler(process_view_category, lambda c: c.data == 'view_category')
+	dp.register_message_handler(process_create_category_state, state = FSMFormCategory.title)
+	dp.register_message_handler(process_delete_category_state, state = StatesCategory.STATE_DELETE_CATEGORY)

@@ -1,7 +1,7 @@
 from datetime import datetime
 
 
-TOKEN = "5017770138:AAH9vs6N6JjGMDaYc-f6z4lPuumexosdfA0"
+TOKEN = ""
 NAME_DB = "db_bot"
 
 LIMIT_TITLE = 255
