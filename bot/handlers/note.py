@@ -110,30 +110,40 @@ async def process_create_note_category_state(msg: types.Message, state: FSMConte
 async def process_create_note_date_completion_state(call: types.CallbackQuery, state: FSMContext):
 	answer_text = ""
 
-	if re.search(r"day:(\d{0,2})", call.data):
-		number_day = int(re.search(r"day:(\d{0,2})", call.data).group(1))
-		number_month = int(re.search(r"month:(\d{0,2})", call.data).group(1))
-		number_year = int(re.search(r"year:(\d{0,4})", call.data).group(1))
+	number_day = re.search(r"day:(\d{0,2})", call.data)
+	number_month = re.search(r"month:(\d{0,2})", call.data)
+	number_year = re.search(r"year:(\d{0,4})", call.data)
 
+	current_date = datetime.datetime.now()
+
+	if re.search(r"none", call.data):
+		await bot.answer_callback_query(call.id, text = "Даты не существует!")
+
+	elif datetime.datetime(
+		int(number_year.group(1)), int(number_month.group(1)), int(number_day.group(1)), 23, 59, 59
+		) < current_date:
+		await bot.answer_callback_query(call.id, text = "Прошедшая дата!")
+
+	elif number_day:
 		async with state.proxy() as data:
-			data["number_day"] = number_day
-			data["number_month"] = number_month
-			data["number_year"] = number_year
+			data["number_day"] = int(number_day.group(1))
+			data["number_month"] = int(number_month.group(1))
+			data["number_year"] = int(number_year.group(1))
 
 		choice_date = helpers.get_pub_date_note(
-			date = datetime.datetime(DATE['year'], DATE['month'], DATE['day'])
+			date = datetime.datetime(int(number_year.group(1)), int(number_month.group(1)), int(number_day.group(1)))
 		)
 		choice_date = re.sub(r"\s\d{0,2}:\d{0,2}", "", choice_date)
 		answer_text = f"Вы выбрали: {choice_date}"
 
-	async with state.proxy() as data:
-		helpers.add_db_new_note(data = data, username = call.from_user.username)
+		async with state.proxy() as data:
+			helpers.add_db_new_note(data = data, username = call.from_user.username)
 
-	helpers.cleans_dict_date()
+		helpers.cleans_dict_date()
 
-	await bot.answer_callback_query(call.id, text = answer_text)
-	await state.finish()
-	await bot.send_message(call.from_user.id, "Запись создана!", reply_markup = types.ReplyKeyboardRemove())
+		await bot.answer_callback_query(call.id, text = answer_text)
+		await state.finish()
+		await bot.send_message(call.from_user.id, "Запись создана!", reply_markup = types.ReplyKeyboardRemove())
 
 
 async def process_view_prev_next_month_date(call: types.CallbackQuery):
@@ -252,21 +262,29 @@ async def process_view_note_on_category_state(msg: types.Message):
 
 
 async def process_delete_note(call: types.CallbackQuery):
-	await bot.answer_callback_query(call.id)
+	text = ""
+	is_deleted_note = helpers.delete_note(username = call.from_user.username, data = call.data, action = "delete")
 
-	helpers.delete_note(username = call.from_user.username, data = call.data, action = "delete")
+	if is_deleted_note:
+		text = "Этой записи уже нет!"
+	else:
+		await bot.send_message(call.from_user.id, emoji.emojize("Запись удалена :cross_mark:"))
 
+	await bot.answer_callback_query(call.id, text = text)
 	await bot.delete_message(chat_id = call.from_user.id, message_id = call.message.message_id)
-	await bot.send_message(call.from_user.id, emoji.emojize("Запись удалена :cross_mark:"))
 
 
 async def process_complete_note(call: types.CallbackQuery):
-	await bot.answer_callback_query(call.id)
+	text = ""
+	is_deleted_note = helpers.delete_note(username = call.from_user.username, data = call.data, action = "delete")
 
-	helpers.delete_note(username = call.from_user.username, data = call.data, action = "complete")
+	if is_deleted_note:
+		text = "Этой записи уже нет!"
+	else:
+		await bot.send_message(call.from_user.id, emoji.emojize("Заметка завершена :check_mark_button:"))
 
+	await bot.answer_callback_query(call.id, text = text)
 	await bot.delete_message(chat_id = call.from_user.id, message_id = call.message.message_id)
-	await bot.send_message(call.from_user.id, emoji.emojize("Заметка завершена :check_mark_button:"))
 
 
 async def process_note_control(msg: types.Message):
@@ -278,6 +296,7 @@ async def process_note_control(msg: types.Message):
 
 
 def reqister_handler_note():
+	dp.register_message_handler(process_note_control, commands = ["note"])
 	dp.register_message_handler(process_create_note_title_state, state = FSMFormNote.title)
 	dp.register_message_handler(process_create_note_text_state, state = FSMFormNote.text)
 	dp.register_message_handler(process_create_note_category_state, state = FSMFormNote.category)

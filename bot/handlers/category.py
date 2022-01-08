@@ -150,6 +150,7 @@ async def process_category_control(msg: types.Message):
 
 
 def	reqister_handler_category():
+	dp.register_message_handler(process_category_control, commands = ["category"])
 	dp.register_callback_query_handler(process_create_category, lambda c: c.data == 'create_category')
 	dp.register_callback_query_handler(process_delete_category, lambda c: c.data == 'delete_category')
 	dp.register_callback_query_handler(process_view_category, lambda c: c.data == 'view_category')

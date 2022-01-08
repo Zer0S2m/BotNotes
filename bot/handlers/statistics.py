@@ -5,6 +5,7 @@ from models import User
 
 from dispatcher import bot
 from dispatcher import session
+from dispatcher import dp
 
 from config import MESSAGES
 
@@ -21,3 +22,7 @@ async def process_statistics_control(msg: types.Message):
 	)
 
 	await bot.send_message(msg.from_user.id, text)
+
+
+def reqister_handler_statistics():
+	dp.register_message_handler(process_statistics_control, commands = ["statistics"])

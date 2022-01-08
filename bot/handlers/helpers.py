@@ -1,6 +1,8 @@
 import re
 import datetime
 
+import sqlalchemy
+
 from models import (
 	User, Note, Category,
 	Statistics
@@ -82,7 +84,7 @@ def cleans_dict_date():
 	DATE["year"] = datetime.datetime.now().year
 
 
-def delete_note(username: str, data: str, action: str):
+def delete_note(username: str, data: str, action: str) -> bool:
 	user_id = session.query(User).filter(User.username == username).first().id
 	note_id = re.search(r"\d{1,10}", data).group(0)
 
@@ -90,7 +92,10 @@ def delete_note(username: str, data: str, action: str):
 		user_id = user_id, id = note_id
 	).first()
 
-	session.delete(note_deleted)
+	try:
+		session.delete(note_deleted)
+	except sqlalchemy.orm.exc.UnmappedInstanceError:
+		return True
 
 	statistics = session.query(Statistics).filter_by(user_id = user_id).first()
 
@@ -100,3 +105,5 @@ def delete_note(username: str, data: str, action: str):
 		statistics.completed_notes += 1
 
 	session.commit()
+
+	return False
