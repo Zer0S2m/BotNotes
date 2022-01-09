@@ -1,4 +1,4 @@
-import datetime
+import datetime as DT
 
 from aiogram.types import (
 	ReplyKeyboardMarkup, InlineKeyboardMarkup,
@@ -23,10 +23,14 @@ btn_view_all_note = InlineKeyboardButton(
 btn_view_note_on_category = InlineKeyboardButton(
 	emoji.emojize("Посмотреть записи по категории :card_file_box:"), callback_data = "view_note_on_category"
 )
+btn_view_note_on_date = InlineKeyboardButton(
+	emoji.emojize("Посмотреть записи по дате :four_o’clock:"), callback_data = "view_note_on_date"
+)
 
 control_notes.add(btn_create_note)
 control_notes.add(btn_view_all_note)
 control_notes.add(btn_view_note_on_category)
+control_notes.add(btn_view_note_on_date)
 
 
 control_categories = InlineKeyboardMarkup(row_width = 2)
@@ -80,7 +84,7 @@ def create_inline_btns_for_note(note: Note) -> InlineKeyboardMarkup:
 	return control_note
 
 
-def create_inline_btns_for_choice_date() -> InlineKeyboardMarkup:
+def create_inline_btns_for_choice_date(is_btn_choice_date_not: bool) -> InlineKeyboardMarkup:
 	control_note_date = InlineKeyboardMarkup(row_width = 7)
 
 	btn_prev_month_date = InlineKeyboardButton(
@@ -95,9 +99,9 @@ def create_inline_btns_for_choice_date() -> InlineKeyboardMarkup:
 
 	date_choice = []
 
-	days_current_month = last_day_of_month(datetime.date(DATE["year"], DATE["month"], 1)).day
-	first_day_month = datetime.date(DATE["year"], DATE["month"], 1).weekday()
-	last_day_month = datetime.date(DATE["year"], DATE["month"], days_current_month).weekday()
+	days_current_month = last_day_of_month(DT.date(DATE["year"], DATE["month"], 1)).day
+	first_day_month = DT.date(DATE["year"], DATE["month"], 1).weekday()
+	last_day_month = DT.date(DATE["year"], DATE["month"], days_current_month).weekday()
 
 	if first_day_month != 0:
 		for day in range(0, first_day_month):
@@ -118,11 +122,13 @@ def create_inline_btns_for_choice_date() -> InlineKeyboardMarkup:
 
 	control_note_date.add(*date_choice)
 	control_note_date.row(btn_prev_month_date, btn_next_month_date)
-	control_note_date.add(btn_not_date)
+
+	if is_btn_choice_date_not:
+		control_note_date.add(btn_not_date)
 
 	return control_note_date
 
 
 def last_day_of_month(any_day):
-	next_month = any_day.replace(day = 28) + datetime.timedelta(days = 4)
-	return next_month - datetime.timedelta(days = next_month.day)
+	next_month = any_day.replace(day = 28) + DT.timedelta(days = 4)
+	return next_month - DT.timedelta(days = next_month.day)

@@ -1,7 +1,7 @@
-from datetime import datetime
+from datetime import datetime as DT
 
 
-TOKEN = "5017770138:AAHUnxxyqFvJG1Ja6SedOvcJQWLefJdTw2U"
+TOKEN = ""
 NAME_DB = "db_bot"
 
 LIMIT_TITLE = 255
@@ -42,9 +42,9 @@ MESSAGES = {
 }
 
 DATE = {
-	"day": datetime.now().day,
-	"month": datetime.now().month,
-	"year": datetime.now().year,
+	"day": DT.now().day,
+	"month": DT.now().month,
+	"year": DT.now().year,
 }
 
 MONTHS = {

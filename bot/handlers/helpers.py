@@ -1,5 +1,5 @@
 import re
-import datetime
+import datetime as DT
 
 import sqlalchemy
 
@@ -27,7 +27,7 @@ def add_db_new_note(data: dict, username: str):
 		new_note.category_id = data["category"]
 
 	if ("number_day" in data) and ("number_month" in data) and ("number_year" in data):
-		complete_date = datetime.date(data["number_year"], data["number_month"], data["number_day"])
+		complete_date = DT.date(data["number_year"], data["number_month"], data["number_day"])
 		new_note.complete_date = complete_date
 
 	session.add(new_note)
@@ -52,7 +52,7 @@ def create_text_note(note: Note) -> str:
 
 	if str(note.complete_date)[0] != "0" and len(note.complete_date) > 0:
 		complete_date_split = list(map(int, note.complete_date.split("-")))
-		complete_date = get_pub_date_note(date = datetime.datetime(*complete_date_split))
+		complete_date = get_pub_date_note(date = DT.datetime(*complete_date_split))
 		complete_date = re.sub(r"\s\d{0,2}:\d{0,2}", "", complete_date)
 
 		text += f"\n\n<b>Дата завершения</b> - {complete_date}"
@@ -62,13 +62,13 @@ def create_text_note(note: Note) -> str:
 	return text
 
 
-def get_pub_date_note(date: datetime.datetime) -> str:
+def get_pub_date_note(date: DT.datetime) -> str:
 	return f'{date.strftime("%d.%m.%Y")} {date.strftime("%H:%M")}'
 
 
 def change_dict_date(data: dict):
 	""":param data - key: 'month'"""
-	
+
 	if data["month"] == 0:
 		DATE["month"] = 12
 		DATE["year"] = DATE["year"] - 1
@@ -79,9 +79,21 @@ def change_dict_date(data: dict):
 		DATE["month"] = data["month"]
 
 def cleans_dict_date():
-	DATE["day"] = datetime.datetime.now().day
-	DATE["month"] = datetime.datetime.now().month
-	DATE["year"] = datetime.datetime.now().year
+	DATE["day"] = DT.datetime.now().day
+	DATE["month"] = DT.datetime.now().month
+	DATE["year"] = DT.datetime.now().year
+
+
+def parse_date(data: str) -> dict:
+	number_day = re.search(r"day:(\d{0,2})", data)
+	number_month = re.search(r"month:(\d{0,2})", data)
+	number_year = re.search(r"year:(\d{0,4})", data)
+
+	return {
+		"number_day": number_day,
+		"number_month": number_month,
+		"number_year": number_year
+	}
 
 
 def delete_note(username: str, data: str, action: str) -> bool:
