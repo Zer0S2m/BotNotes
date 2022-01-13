@@ -5,7 +5,7 @@ import sqlalchemy
 
 from models import (
 	User, Note, Category,
-	Statistics
+	Statistics, File
 )
 
 from dispatcher import session
@@ -26,6 +26,9 @@ def add_db_new_note(data: dict, username: str):
 	if "category" in data:
 		new_note.category_id = data["category"]
 
+	if "file" in data:
+		new_note.file_id = data["file"]
+
 	if ("number_day" in data) and ("number_month" in data) and ("number_year" in data):
 		complete_date = DT.date(data["number_year"], data["number_month"], data["number_day"])
 		new_note.complete_date = complete_date
@@ -34,6 +37,19 @@ def add_db_new_note(data: dict, username: str):
 
 	statistics = session.query(Statistics).filter_by(user_id = user_id).first()
 	statistics.total_notes += 1
+
+	session.commit()
+
+
+def add_db_new_file(data: dict, username: str):
+	user_id = session.query(User).filter(User.username == username).first().id
+	new_file = File(
+		user_id = user_id,
+		file_path = data["file_path"],
+		file_path_id = data["file_path_id"]
+	)
+
+	session.add(new_file)
 
 	session.commit()
 
@@ -47,8 +63,8 @@ def create_text_note(note: Note) -> str:
 	if str(note.title)[0] != "0" and len(note.title) > 0:
 		text = f"<b>Заголовок</b> - {note.title}\n{text}"
 
-	if note.category_id:
-		text += f"\n\n<b>Категория</b> - {session.query(Category).filter(Category.id == note.category_id).first().title}"
+	if note.category:
+		text += f"\n\n<b>Категория</b> - {note.category.title}"
 
 	if str(note.complete_date)[0] != "0" and len(note.complete_date) > 0:
 		complete_date_split = list(map(int, note.complete_date.split("-")))

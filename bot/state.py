@@ -13,6 +13,7 @@ class FSMFormNote(StatesGroup):
 	text = State()
 	category = State()
 	date_completion = State()
+	file_download = State()
 
 
 class FSMFormCategory(StatesGroup):

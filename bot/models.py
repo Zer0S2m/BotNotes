@@ -29,6 +29,7 @@ class User(Base):
 	notes = relationship("Note", backref = "user_notes", cascade = "all, delete")
 	categories = relationship("Category", backref = "user_categories", cascade = "all, delete")
 	statistics = relationship("Statistics", backref = "user_statistics", cascade = "all, delete")
+	files = relationship("File", backref = "user_files", cascade = "all, delete")
 
 	def __repr__(self):
 		return f"<{self.first_name}> - <username: {self.username}>"
@@ -47,6 +48,8 @@ class Note(Base):
 	user_id = Column(Integer, ForeignKey('user.id'))
 	category = relationship("Category", backref = "note_category", uselist = False)
 	category_id = Column(Integer, ForeignKey('category.id', ondelete = "CASCADE"), default = False)
+	file = relationship("File", backref = "note_file", uselist = False)
+	file_id = Column(Integer, ForeignKey('file.id', ondelete = "CASCADE"), default = False)
 
 
 	def __repr__(self):
@@ -77,6 +80,21 @@ class Statistics(Base):
 	total_notes = Column(Integer, default = 0)
 	completed_notes = Column(Integer, default = 0)
 	unfinished_notes = Column(Integer, default = 0)
+
+
+	def __repr__(self):
+		return f"<id-user: {self.user_id}> - <id: {self.id}>"
+
+
+class File(Base):
+	"""docstring for File"""
+
+	__tablename__ = "file"
+
+	id = Column(Integer, primary_key = True)
+	user_id = Column(Integer, ForeignKey('user.id'))
+	file_path = Column(String, default = False, nullable = False)
+	file_path_id = Column(String, default = False, nullable = False)
 
 
 	def __repr__(self):

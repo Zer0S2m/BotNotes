@@ -132,3 +132,13 @@ def create_inline_btns_for_choice_date(is_btn_choice_date_not: bool) -> InlineKe
 def last_day_of_month(any_day):
 	next_month = any_day.replace(day = 28) + DT.timedelta(days = 4)
 	return next_month - DT.timedelta(days = next_month.day)
+
+
+def create_btn_cancel_download_file() -> ReplyKeyboardMarkup:
+	control_download_file = ReplyKeyboardMarkup(resize_keyboard = True)
+
+	control_download_file.add(
+		KeyboardButton("-")
+	)
+
+	return control_download_file

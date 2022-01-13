@@ -66,4 +66,3 @@ def reqister_handler_common():
 	dp.register_message_handler(process_info_command, commands = ["info"])
 	dp.register_message_handler(cmd_cancel, commands = ["cancel"], state = "*")
 	dp.register_message_handler(cmd_cancel, Text(equals = "отмена", ignore_case = True), state = "*")
-	

@@ -2,6 +2,8 @@ import re
 import datetime as DT
 
 from aiogram import types
+from aiogram.types import ContentType
+from aiogram.types import InputFile
 from aiogram.dispatcher import FSMContext
 
 from sqlalchemy import and_
@@ -11,11 +13,13 @@ import emoji
 from config import (
 	LIMIT_TITLE, LIMIT_TEXT,
 	INFO_TEXT, LIMIT_CATEGORY,
-	MONTHS, DATE
+	MONTHS, DATE,
+	STATIC_FILES
 )
 
 from models import (
-	User, Note, Category
+	User, Note, Category,
+	File
 )
 
 from state import StatesNote
@@ -68,7 +72,9 @@ async def process_create_note_text_state(msg: types.Message, state: FSMContext):
 		async with state.proxy() as data:
 			data['text'] = text
 
-		if session.query(Category).first():
+		if session.query(Category).filter_by(
+			user_id = user_id
+		).first():
 			await FSMFormNote.next()
 
 			await bot.send_message(
@@ -146,14 +152,16 @@ async def process_create_note_date_completion_state(call: types.CallbackQuery, s
 		choice_date = re.sub(r"\s\d{0,2}:\d{0,2}", "", choice_date)
 		answer_text = f"Вы выбрали: {choice_date}"
 
-		async with state.proxy() as data:
-			helpers.add_db_new_note(data = data, username = call.from_user.username)
-
 		helpers.cleans_dict_date()
 
 		await bot.answer_callback_query(call.id, text = answer_text)
-		await state.finish()
-		await bot.send_message(call.from_user.id, "Запись создана!", reply_markup = types.ReplyKeyboardRemove())
+		await FSMFormNote.next()
+
+		await bot.send_message(
+			call.from_user.id,
+			"Прикрепите файлы:\n(<b>Документ</b>, <b>фотография</b> или <b>аудио</b>)",
+			reply_markup = keyboards.create_btn_cancel_download_file()
+		)
 
 
 async def process_create_note_date_completion_change_month(call: types.CallbackQuery):
@@ -195,6 +203,53 @@ async def send_message_date_calendar(id: int, is_btn_choice_date_not: bool, text
         f"{text}\n<b>-- {MONTHS[str(DATE['month'])].upper()} --</b>",
         reply_markup = keyboards.create_inline_btns_for_choice_date(is_btn_choice_date_not)
     )
+
+
+async def process_create_note_file_download(msg: types.Message, state: FSMContext):
+	state = dp.current_state(user = msg.from_user.id)
+	user_id = session.query(User).filter(User.username == msg.from_user.username).first().id
+
+	if msg.text.strip() != "-":
+		file_id = None
+
+		if msg.document:
+			file_id = msg.document.file_id
+
+		elif msg.photo:
+			file_id = msg.photo[len(msg.photo) - 1].file_id
+
+		elif msg.audio:
+			file_id = msg.audio.file_id
+
+		file = await bot.get_file(file_id)
+		file_path = file.file_path
+		file_name = file_path.split("/")[-1]
+		directory = f'{STATIC_FILES}/{file_path.split("/")[0]}/{file_name}'
+
+		await bot.download_file(file_path, directory)
+
+		async with state.proxy() as data:
+			helpers.add_db_new_file(data = {
+				"file_path": directory,
+				"file_path_id": file_id
+			}, username = msg.from_user.username)
+
+			data["file"] = session.query(File).filter_by(
+				user_id = user_id
+			).first().id
+
+			helpers.add_db_new_note(data = data, username = msg.from_user.username)
+
+	else:
+		async with state.proxy() as data:
+			helpers.add_db_new_note(data = data, username = msg.from_user.username)
+
+	await state.finish()
+	await bot.send_message(
+		msg.from_user.id,
+		"Запись создана!",
+		reply_markup = types.ReplyKeyboardRemove()
+	)
 
 
 async def process_view_note(call: types.CallbackQuery):
@@ -411,23 +466,36 @@ def reqister_handler_note():
 	dp.register_message_handler(process_create_note_title_state, state = FSMFormNote.title)
 	dp.register_message_handler(process_create_note_text_state, state = FSMFormNote.text)
 	dp.register_message_handler(process_create_note_category_state, state = FSMFormNote.category)
+	dp.register_message_handler(
+		process_create_note_file_download,
+		state = FSMFormNote.file_download,
+		content_types = [ContentType.AUDIO, ContentType.DOCUMENT, ContentType.PHOTO, ContentType.TEXT]
+	)
 	dp.register_message_handler(process_view_note_on_category_state, state = StatesNote.STATE_VIEW_NOTE_ON_CATEGORY)
 
 	dp.register_callback_query_handler(process_create_note, lambda c: c.data == 'create_note')
 	dp.register_callback_query_handler(process_delete_note, text_contains = 'delete_note_')
 	dp.register_callback_query_handler(process_complete_note, text_contains = 'complete_note_')
 	dp.register_callback_query_handler(
-		process_create_note_date_completion_state, text_contains = 'choice_date_', state = FSMFormNote.date_completion
+		process_create_note_date_completion_state,
+		text_contains = 'choice_date_',
+		state = FSMFormNote.date_completion
 	)
 	dp.register_callback_query_handler(process_view_note, lambda c: c.data == 'view_note')
 	dp.register_callback_query_handler(process_view_note_on_category, lambda c: c.data == 'view_note_on_category')
 	dp.register_callback_query_handler(process_view_note_on_date, lambda c: c.data == 'view_note_on_date')
 	dp.register_callback_query_handler(
-		process_view_note_on_date_change_month, text_contains = 'month_date_action', state = StatesNote.STATE_VIEW_NOTE_ON_DATE
+		process_view_note_on_date_change_month,
+		text_contains = 'month_date_action',
+		state = StatesNote.STATE_VIEW_NOTE_ON_DATE
 	)
 	dp.register_callback_query_handler(
-		process_view_note_on_date_state, text_contains = 'choice_date_', state = StatesNote.STATE_VIEW_NOTE_ON_DATE
+		process_view_note_on_date_state,
+		text_contains = 'choice_date_',
+		state = StatesNote.STATE_VIEW_NOTE_ON_DATE
 	)
 	dp.register_callback_query_handler(
-		process_create_note_date_completion_change_month, text_contains = 'month_date_action', state = FSMFormNote.date_completion
+		process_create_note_date_completion_change_month,
+		text_contains = 'month_date_action',
+		state = FSMFormNote.date_completion
 	)
