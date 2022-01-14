@@ -1,7 +1,7 @@
 from datetime import datetime as DT
 
 
-TOKEN = ""
+TOKEN = "5017770138:AAEWHkUEsuElu-lCXfEPo7e3mqDVBRkjBfk"
 NAME_DB = "db_bot"
 
 LIMIT_TITLE = 255
@@ -10,6 +10,12 @@ LIMIT_TEXT = 1000
 
 STATIC_FILES = "static"
 INFO_TEXT = "Для получения информации воспользуйтесь командой: /info"
+
+FILE_EXTENSION = {
+	"doc": "doc",
+	"photo": "photo",
+	"audio": "audio"
+}
 
 MESSAGES = {
 	"start": """

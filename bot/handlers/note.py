@@ -11,10 +11,10 @@ from sqlalchemy import and_
 import emoji
 
 from config import (
-	LIMIT_TITLE, LIMIT_TEXT,
+	STATIC_FILES, FILE_EXTENSION,
 	INFO_TEXT, LIMIT_CATEGORY,
+	LIMIT_TITLE, LIMIT_TEXT,
 	MONTHS, DATE,
-	STATIC_FILES
 )
 
 from models import (
@@ -139,6 +139,16 @@ async def process_create_note_date_completion_state(call: types.CallbackQuery, s
 	if re.search(r"none", call.data):
 		await bot.answer_callback_query(call.id, text = "Даты не существует!")
 
+	elif re.search(r"not", call.data):
+		await bot.answer_callback_query(call.id, text = "Вы выбрали: без даты")
+		await FSMFormNote.next()
+
+		await bot.send_message(
+			call.from_user.id,
+			"Прикрепите файлы:\n(<b>Документ</b>, <b>фотография</b> или <b>аудио</b>)",
+			reply_markup = keyboards.create_btn_cancel_download_file()
+		)
+
 	elif choice_date < current_date:
 		await bot.answer_callback_query(call.id, text = "Прошедшая дата!")
 
@@ -209,17 +219,21 @@ async def process_create_note_file_download(msg: types.Message, state: FSMContex
 	state = dp.current_state(user = msg.from_user.id)
 	user_id = session.query(User).filter(User.username == msg.from_user.username).first().id
 
-	if msg.text.strip() != "-":
+	if msg.text == None or msg.text.strip() != "-":
 		file_id = None
+		file_extension = None
 
 		if msg.document:
 			file_id = msg.document.file_id
+			file_extension = FILE_EXTENSION["doc"]
 
 		elif msg.photo:
 			file_id = msg.photo[len(msg.photo) - 1].file_id
+			file_extension = FILE_EXTENSION["photo"]
 
 		elif msg.audio:
 			file_id = msg.audio.file_id
+			file_extension = FILE_EXTENSION["audio"]
 
 		file = await bot.get_file(file_id)
 		file_path = file.file_path
@@ -231,11 +245,12 @@ async def process_create_note_file_download(msg: types.Message, state: FSMContex
 		async with state.proxy() as data:
 			helpers.add_db_new_file(data = {
 				"file_path": directory,
-				"file_path_id": file_id
+				"file_path_id": file_id,
+				"file_extension": file_extension
 			}, username = msg.from_user.username)
 
 			data["file"] = session.query(File).filter_by(
-				user_id = user_id
+				user_id = user_id, file_path_id = file_id
 			).first().id
 
 			helpers.add_db_new_note(data = data, username = msg.from_user.username)
@@ -266,15 +281,7 @@ async def process_view_note(call: types.CallbackQuery):
 
 	else:
 		await bot.send_message(call.from_user.id, "Записи:")
-
-		for note in notes:
-			text_note = helpers.create_text_note(note)
-
-			await bot.send_message(
-				call.from_user.id,
-				text_note,
-				reply_markup = keyboards.create_inline_btns_for_note(note)
-			)
+		await process_view_note_list_iteration(notes, call.from_user.id)
 
 
 async def process_view_note_on_category(call: types.CallbackQuery):
@@ -328,15 +335,7 @@ async def process_view_note_on_category_state(msg: types.Message):
 
 		else:
 			await bot.send_message(msg.from_user.id, "Записи:", reply_markup = types.ReplyKeyboardRemove())
-
-			for note in notes:
-				text_note = helpers.create_text_note(note)
-
-				await bot.send_message(
-					msg.from_user.id,
-					text_note,
-					reply_markup = keyboards.create_inline_btns_for_note(note)
-				)
+			await process_view_note_list_iteration(notes, msg.from_user.id)
 
 		await state.reset_state()
 
@@ -399,15 +398,8 @@ async def process_view_note_on_date_state(call: types.CallbackQuery, state: FSMC
 
 			if notes:
 				await bot.send_message(call.from_user.id, "Записи:")
+				await process_view_note_list_iteration(notes, call.from_user.id)
 
-				for note in notes:
-					text_note = helpers.create_text_note(note)
-
-					await bot.send_message(
-						call.from_user.id,
-						text_note,
-						reply_markup = keyboards.create_inline_btns_for_note(note)
-					)
 			else:
 				await bot.send_message(call.from_user.id, "Записей нет!")
 
@@ -437,12 +429,15 @@ async def process_delete_note(call: types.CallbackQuery):
 		await bot.send_message(call.from_user.id, emoji.emojize("Запись удалена :cross_mark:"))
 
 	await bot.answer_callback_query(call.id, text = text)
+
 	await bot.delete_message(chat_id = call.from_user.id, message_id = call.message.message_id)
+	if re.search(r":file=(\w{0,5})", call.data).group(1) == "True":
+		await bot.delete_message(chat_id = call.from_user.id, message_id = call.message.message_id - 1)
 
 
 async def process_complete_note(call: types.CallbackQuery):
 	text = ""
-	is_deleted_note = helpers.delete_note(username = call.from_user.username, data = call.data, action = "delete")
+	is_deleted_note = helpers.delete_note(username = call.from_user.username, data = call.data, action = "complete")
 
 	if is_deleted_note:
 		text = "Этой записи уже нет!"
@@ -450,7 +445,54 @@ async def process_complete_note(call: types.CallbackQuery):
 		await bot.send_message(call.from_user.id, emoji.emojize("Заметка завершена :check_mark_button:"))
 
 	await bot.answer_callback_query(call.id, text = text)
+
 	await bot.delete_message(chat_id = call.from_user.id, message_id = call.message.message_id)
+	if re.search(r":file=(\w{0,5})", call.data).group(1) == "True":
+		await bot.delete_message(chat_id = call.from_user.id, message_id = call.message.message_id - 1)
+
+
+async def process_view_note_list_iteration(notes: list, id: int):
+	for note in notes:
+		data = helpers.create_text_note(note)
+		text_note = data["text"]
+
+		if note.file:
+			await bot.send_message(id, text_note)
+			await process_view_note_file(data = {
+				"id": id,
+				"file_path_id": data["file_path_id"],
+				"file_extension": data["file_extension"],
+				"note": note
+			})
+		else:
+			await bot.send_message(
+				id,
+				text_note,
+				reply_markup = keyboards.create_inline_btns_for_note(note, False)
+			)
+
+
+async def process_view_note_file(data: dict):
+	if data["file_extension"] == FILE_EXTENSION["doc"]:
+		await bot.send_document(
+			data["id"],
+			data["file_path_id"],
+			reply_markup = keyboards.create_inline_btns_for_note(data["note"], True)
+		)
+
+	elif data["file_extension"] == FILE_EXTENSION["audio"]:
+		await bot.send_audio(
+			data["id"],
+			data["file_path_id"],
+			reply_markup = keyboards.create_inline_btns_for_note(data["note"], True)
+		)
+
+	elif data["file_extension"] == FILE_EXTENSION["photo"]:
+		await bot.send_photo(
+			data["id"],
+			data["file_path_id"],
+			reply_markup = keyboards.create_inline_btns_for_note(data["note"], True)
+		)
 
 
 async def process_note_control(msg: types.Message):

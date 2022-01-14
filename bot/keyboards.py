@@ -70,14 +70,14 @@ def create_btns_for_choice_categories(categoies: list) -> ReplyKeyboardMarkup:
 	return control_choice_category
 
 
-def create_inline_btns_for_note(note: Note) -> InlineKeyboardMarkup:
+def create_inline_btns_for_note(note: Note, is_file: bool) -> InlineKeyboardMarkup:
 	control_note = InlineKeyboardMarkup(row_width = 2)
 
 	btn_delete_note = InlineKeyboardButton(
-		emoji.emojize('Удалить :wastebasket:'), callback_data = f"delete_note_{note.id}"
+		emoji.emojize('Удалить :wastebasket:'), callback_data = f"delete_note_{note.id}:file={is_file}"
 	)
 	btn_complete_note = InlineKeyboardButton(
-		emoji.emojize('Завершить :check_mark_button:'), callback_data = f"complete_note_{note.id}"
+		emoji.emojize('Завершить :check_mark_button:'), callback_data = f"complete_note_{note.id}:file={is_file}"
 	)
 	control_note.row(btn_delete_note, btn_complete_note)
 

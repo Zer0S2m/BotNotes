@@ -31,6 +31,7 @@ class User(Base):
 	statistics = relationship("Statistics", backref = "user_statistics", cascade = "all, delete")
 	files = relationship("File", backref = "user_files", cascade = "all, delete")
 
+
 	def __repr__(self):
 		return f"<{self.first_name}> - <username: {self.username}>"
 
@@ -48,7 +49,7 @@ class Note(Base):
 	user_id = Column(Integer, ForeignKey('user.id'))
 	category = relationship("Category", backref = "note_category", uselist = False)
 	category_id = Column(Integer, ForeignKey('category.id', ondelete = "CASCADE"), default = False)
-	file = relationship("File", backref = "note_file", uselist = False)
+	file = relationship("File", backref = "note_file", uselist = False, cascade = "all, delete")
 	file_id = Column(Integer, ForeignKey('file.id', ondelete = "CASCADE"), default = False)
 
 
@@ -95,6 +96,7 @@ class File(Base):
 	user_id = Column(Integer, ForeignKey('user.id'))
 	file_path = Column(String, default = False, nullable = False)
 	file_path_id = Column(String, default = False, nullable = False)
+	file_extension = Column(String, nullable = False)
 
 
 	def __repr__(self):

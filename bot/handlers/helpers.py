@@ -46,7 +46,8 @@ def add_db_new_file(data: dict, username: str):
 	new_file = File(
 		user_id = user_id,
 		file_path = data["file_path"],
-		file_path_id = data["file_path_id"]
+		file_path_id = data["file_path_id"],
+		file_extension = data["file_extension"]
 	)
 
 	session.add(new_file)
@@ -54,7 +55,7 @@ def add_db_new_file(data: dict, username: str):
 	session.commit()
 
 
-def create_text_note(note: Note) -> str:
+def create_text_note(note: Note) -> dict:
 	pub_date = get_pub_date_note(
 		date = session.query(Note).filter(Note.id == note.id).first().pub_date
 	)
@@ -74,8 +75,18 @@ def create_text_note(note: Note) -> str:
 		text += f"\n\n<b>Дата завершения</b> - {complete_date}"
 
 	text += f"\n\n{pub_date}"
+	file_path_id = None
+	file_extension = None
 
-	return text
+	if note.file:
+		file_path_id = note.file.file_path_id
+		file_extension = note.file.file_extension
+
+	return {
+		"text": text,
+		"file_path_id": file_path_id,
+		"file_extension": file_extension
+	}
 
 
 def get_pub_date_note(date: DT.datetime) -> str:
