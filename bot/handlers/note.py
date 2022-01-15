@@ -39,7 +39,11 @@ async def process_create_note(call: types.CallbackQuery):
 
 	await bot.answer_callback_query(call.id)
 
-	await bot.send_message(call.from_user.id, "Запишите название записи:")
+	await bot.send_message(
+		call.from_user.id,
+		"Запишите название записи:",
+		reply_markup = keyboards.create_btn_cancel_title_note()
+	)
 
 
 async def process_create_note_title_state(msg: types.Message, state: FSMContext):
@@ -57,7 +61,11 @@ async def process_create_note_title_state(msg: types.Message, state: FSMContext)
 			data['title'] = title
 
 		await FSMFormNote.next()
-		await bot.send_message(msg.from_user.id, "Запишите описание записи:")
+		await bot.send_message(
+			msg.from_user.id,
+			"Запишите описание записи:",
+			reply_markup = types.ReplyKeyboardRemove()
+		)
 
 
 async def process_create_note_text_state(msg: types.Message, state: FSMContext):

@@ -1,4 +1,5 @@
 import re
+import os
 import datetime as DT
 
 import sqlalchemy
@@ -132,6 +133,9 @@ def delete_note(username: str, data: str, action: str) -> bool:
 	).first()
 
 	try:
+		if note_deleted.file:
+			delete_file_deleted_note(note_deleted.file.file_path)
+
 		session.delete(note_deleted)
 	except sqlalchemy.orm.exc.UnmappedInstanceError:
 		return True
@@ -146,3 +150,7 @@ def delete_note(username: str, data: str, action: str) -> bool:
 	session.commit()
 
 	return False
+
+
+def delete_file_deleted_note(path_file: str):
+	os.remove(path_file)

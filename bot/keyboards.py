@@ -142,3 +142,13 @@ def create_btn_cancel_download_file() -> ReplyKeyboardMarkup:
 	)
 
 	return control_download_file
+
+
+def create_btn_cancel_title_note() -> ReplyKeyboardMarkup:
+	control_note_create_title = ReplyKeyboardMarkup(resize_keyboard = True)
+
+	control_note_create_title.add(
+		KeyboardButton("-")
+	)
+
+	return control_note_create_title
