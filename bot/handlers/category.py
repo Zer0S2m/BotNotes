@@ -16,9 +16,9 @@ from models import (
 from state import FSMFormCategory
 from state import StatesCategory
 
-from dispatcher import bot
-from dispatcher import dp
-from dispatcher import session
+from dispatcher import (
+	dp, bot, Session
+)
 
 import keyboards
 
@@ -32,9 +32,15 @@ async def process_create_category(call: types.CallbackQuery):
 
 
 async def process_create_category_state(msg: types.Message, state: FSMContext):
+	category = False
 	state = dp.current_state(user = msg.from_user.id)
 	title = msg.text.strip()
-	user_id = session.query(User).filter(User.username == msg.from_user.username).first().id
+
+	with Session.begin() as session:
+		user_id = session.query(User).filter(User.username == msg.from_user.username).first().id
+		category = session.query(Category).filter_by(
+			title = title, user_id = user_id
+		).first()
 
 	if len(title) > LIMIT_CATEGORY:
 		await msg.reply(f"Превышен лимит символов!\n{INFO_TEXT}")
@@ -44,19 +50,17 @@ async def process_create_category_state(msg: types.Message, state: FSMContext):
 			f"Название категория не может начинаться с <b>символов</b> или с <b>цифры</b>!\nПерезапишите название!\n{INFO_TEXT}"
 		)
 
-	elif session.query(Category).filter_by(
-		title = title, user_id = user_id
-	).first():
+	elif category:
 		await msg.reply("Категория с таким названием уже существует!\nПерезапишите название:")
 
 	else:
-		new_category = Category(
-			title = msg.text.strip(),
-			user_id = user_id
-		)
+		with Session.begin() as session:
+			new_category = Category(
+				title = msg.text.strip(),
+				user_id = user_id
+			)
 
-		session.add(new_category)
-		session.commit()
+			session.add(new_category)
 
 		await state.finish()
 		await msg.reply("Категория создана!")
@@ -65,8 +69,14 @@ async def process_create_category_state(msg: types.Message, state: FSMContext):
 async def process_view_category(call: types.CallbackQuery):
 	await bot.answer_callback_query(call.id)
 
-	user_id = session.query(User).filter(User.username == call.from_user.username).first().id
-	categories = session.query(Category).filter_by(user_id = user_id).all()
+	categories = False
+	with Session.begin() as session:
+		user_id = session.query(User).filter(User.username == call.from_user.username).first().id
+		categories = session.query(Category).filter_by(
+			user_id = user_id
+		).all()
+
+		session.close()
 
 	if not categories:
 		await bot.send_message(call.from_user.id, "Категории отсуствуют!")
@@ -75,9 +85,11 @@ async def process_view_category(call: types.CallbackQuery):
 		text = "Категории:\n"
 
 		for category_in in range(0, len(categories)):
-			notes_at_category = len(session.query(Note).filter_by(
-				category_id = categories[category_in].id, user_id = user_id
-			).all())
+			with Session.begin() as session:
+				notes_at_category = len(session.query(Note).filter_by(
+					category_id = categories[category_in].id, user_id = user_id
+				).all())
+
 			text += f"\n{category_in + 1}) {categories[category_in].title} ({notes_at_category})"
 
 		await bot.send_message(call.from_user.id, text)
@@ -86,8 +98,12 @@ async def process_view_category(call: types.CallbackQuery):
 async def process_delete_category(call: types.CallbackQuery):
 	await bot.answer_callback_query(call.id)
 
-	user_id = session.query(User).filter(User.username == call.from_user.username).first().id
-	categories = session.query(Category).filter(Category.user_id == user_id).all()
+	categories = False
+	with Session.begin() as session:
+		user_id = session.query(User).filter(User.username == call.from_user.username).first().id
+		categories = session.query(Category).filter(Category.user_id == user_id).all()
+
+		session.close()
 
 	if not categories:
 		await bot.send_message(call.from_user.id, "Категории для удаления отсуствуют!")
@@ -104,9 +120,11 @@ async def process_delete_category(call: types.CallbackQuery):
 
 
 async def process_delete_category_state(msg: types.Message):
+	with Session.begin() as session:
+		user_id = session.query(User).filter(User.username == msg.from_user.username).first().id
+
 	state = dp.current_state(user = msg.from_user.id)
 	title = msg.text.strip()
-	user_id = session.query(User).filter(User.username == msg.from_user.username).first().id
 
 	if title == "-":
 		await bot.send_message(
@@ -118,9 +136,11 @@ async def process_delete_category_state(msg: types.Message):
 		await state.reset_state()
 
 	else:
-		category_deleted = session.query(Category).filter_by(
-			title = title, user_id = user_id
-		).first()
+		category_deleted = False
+		with Session.begin() as session:
+			category_deleted = session.query(Category).filter_by(
+				title = title, user_id = user_id
+			).first()
 
 		if not category_deleted:
 			await bot.send_message(
@@ -129,8 +149,8 @@ async def process_delete_category_state(msg: types.Message):
 			)
 
 		else:
-			session.delete(category_deleted)
-			session.commit()
+			with Session.begin() as session:
+				session.delete(category_deleted)
 
 			await bot.send_message(
 				msg.from_user.id,

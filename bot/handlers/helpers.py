@@ -9,57 +9,61 @@ from models import (
 	Statistics, File
 )
 
-from dispatcher import session
+from dispatcher import Session
 
 from config import DATE
 
 
 def add_db_new_note(data: dict, username: str):
-	user_id = session.query(User).filter(User.username == username).first().id
-	new_note = Note(
-		text = data["text"],
-		user_id = user_id
-	)
+	with Session.begin() as session:
+		user_id = session.query(User).filter(User.username == username).first().id
+		new_note = Note(
+			text = data["text"],
+			user_id = user_id
+		)
 
-	if "title" in data:
-		new_note.title = data["title"]
+		if "title" in data:
+			new_note.title = data["title"]
 
-	if "category" in data:
-		new_note.category_id = data["category"]
+		if "category" in data:
+			new_note.category_id = data["category"]
 
-	if "file" in data:
-		new_note.file_id = data["file"]
+		if "file" in data:
+			new_note.file_id = data["file"]
 
-	if ("number_day" in data) and ("number_month" in data) and ("number_year" in data):
-		complete_date = DT.date(data["number_year"], data["number_month"], data["number_day"])
-		new_note.complete_date = complete_date
+		if ("number_day" in data) and ("number_month" in data) and ("number_year" in data):
+			complete_date = DT.date(data["number_year"], data["number_month"], data["number_day"])
+			new_note.complete_date = complete_date
 
-	session.add(new_note)
+		session.add(new_note)
 
-	statistics = session.query(Statistics).filter_by(user_id = user_id).first()
-	statistics.total_notes += 1
+		statistics = session.query(Statistics).filter_by(user_id = user_id).first()
+		statistics.total_notes += 1
 
-	session.commit()
+		session.commit()
 
 
 def add_db_new_file(data: dict, username: str):
-	user_id = session.query(User).filter(User.username == username).first().id
-	new_file = File(
-		user_id = user_id,
-		file_path = data["file_path"],
-		file_path_id = data["file_path_id"],
-		file_extension = data["file_extension"]
-	)
+	with Session.begin() as session:
+		user_id = session.query(User).filter(User.username == username).first().id
+		new_file = File(
+			user_id = user_id,
+			file_path = data["file_path"],
+			file_path_id = data["file_path_id"],
+			file_extension = data["file_extension"]
+		)
 
-	session.add(new_file)
-
-	session.commit()
+		session.add(new_file)
 
 
 def create_text_note(note: Note) -> dict:
-	pub_date = get_pub_date_note(
-		date = session.query(Note).filter(Note.id == note.id).first().pub_date
-	)
+	with Session.begin() as session:
+		pub_date = get_pub_date_note(
+			date = session.query(Note).filter_by(
+				id = note.id
+			).first().pub_date
+		)
+
 	text = f"<b>Описание</b> - {note.text}"
 
 	if str(note.title)[0] != "0" and len(note.title) > 0:
@@ -124,32 +128,37 @@ def parse_date(data: str) -> dict:
 	}
 
 
-def delete_note(username: str, data: str, action: str) -> bool:
-	user_id = session.query(User).filter(User.username == username).first().id
-	note_id = re.search(r"\d{1,10}", data).group(0)
+def delete_note(
+	username: str,
+	data: str,
+	action: str
+) -> bool:
+	with Session.begin() as session:
+		user_id = session.query(User).filter(User.username == username).first().id
+		note_id = re.search(r"\d{1,10}", data).group(0)
 
-	note_deleted = session.query(Note).filter_by(
-		user_id = user_id, id = note_id
-	).first()
+		note_deleted = session.query(Note).filter_by(
+			user_id = user_id, id = note_id
+		).first()
 
-	try:
-		if note_deleted.file:
-			delete_file_deleted_note(note_deleted.file.file_path)
+		try:
+			if note_deleted.file:
+				delete_file_deleted_note(note_deleted.file.file_path)
 
-		session.delete(note_deleted)
-	except sqlalchemy.orm.exc.UnmappedInstanceError:
-		return True
+			session.delete(note_deleted)
+		except sqlalchemy.orm.exc.UnmappedInstanceError:
+			return True
 
-	statistics = session.query(Statistics).filter_by(user_id = user_id).first()
+		statistics = session.query(Statistics).filter_by(user_id = user_id).first()
 
-	if action == "delete":
-		statistics.unfinished_notes += 1
-	elif action == "complete":
-		statistics.completed_notes += 1
+		if action == "delete":
+			statistics.unfinished_notes += 1
+		elif action == "complete":
+			statistics.completed_notes += 1
 
-	session.commit()
+		session.commit()
 
-	return False
+		return False
 
 
 def delete_file_deleted_note(path_file: str):

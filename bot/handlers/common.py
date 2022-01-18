@@ -9,32 +9,32 @@ from config import MESSAGES
 from models import User
 from models import Statistics
 
-from dispatcher import dp
-from dispatcher import bot
-from dispatcher import session
+from dispatcher import (
+	dp, bot, Session
+)
 
 
 def create_table_statistics(username: str):
-	if not session.query(Statistics).filter(
-			Statistics.user_id == session.query(User).filter(User.username == username).first().id
-		).first():
+	with Session.begin() as session:
+		if not session.query(Statistics).filter(
+				Statistics.user_id == session.query(User).filter(User.username == username).first().id
+			).first():
 
-		user_id = session.query(User).filter(User.username == username).first().id
+			user_id = session.query(User).filter(User.username == username).first().id
 
-		new_statistics = Statistics(user_id = user_id)
-		session.add(new_statistics)
-		session.commit()
+			new_statistics = Statistics(user_id = user_id)
+			session.add(new_statistics)
 
 
 async def process_start_command(msg: types.Message, state: FSMContext):
 	state = dp.current_state(user = msg.from_user.id)
 	await state.finish()
 
-	if not session.query(User).filter(User.username == msg.from_user.username).first():
-		new_user = User(first_name = msg.from_user.first_name, username = msg.from_user.username)
+	with Session.begin() as session:
+		if not session.query(User).filter(User.username == msg.from_user.username).first():
+			new_user = User(first_name = msg.from_user.first_name, username = msg.from_user.username)
 
-		session.add(new_user)
-		session.commit()
+			session.add(new_user)
 
 	create_table_statistics(username = msg.from_user.username)
 

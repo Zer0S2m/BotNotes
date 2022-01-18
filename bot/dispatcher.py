@@ -15,4 +15,3 @@ dp = Dispatcher(bot, storage = MemoryStorage())
 dp.middleware.setup(LoggingMiddleware())
 
 Session = sessionmaker(bind = engine)
-session = Session()
