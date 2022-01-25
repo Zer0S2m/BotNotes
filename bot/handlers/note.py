@@ -14,7 +14,8 @@ from config import (
 	STATIC_FILES, FILE_EXTENSION,
 	INFO_TEXT, LIMIT_CATEGORY,
 	LIMIT_TITLE, LIMIT_TEXT,
-	MONTHS, DATE,
+	PARAMS_EDIT, MONTHS,
+	DATE,
 )
 
 from models import (
@@ -42,7 +43,7 @@ async def process_create_note(call: types.CallbackQuery):
 	await bot.send_message(
 		call.from_user.id,
 		"Запишите название записи:",
-		reply_markup = keyboards.create_btn_cancel_title_note()
+		reply_markup = keyboards.create_btn_cancel("-")
 	)
 
 
@@ -153,9 +154,7 @@ async def process_create_note_date_completion_state(call: types.CallbackQuery, s
 	choice_date = False
 
 	if parse_date["number_day"]:
-		choice_date = DT.datetime(
-			int(parse_date["number_year"].group(1)), int(parse_date["number_month"].group(1)), int(parse_date["number_day"].group(1)), 23, 59, 59
-		)
+		choice_date = helpers.set_choice_date(parse_date)
 
 	current_date = DT.datetime.now()
 
@@ -169,7 +168,7 @@ async def process_create_note_date_completion_state(call: types.CallbackQuery, s
 		await bot.send_message(
 			call.from_user.id,
 			"Прикрепите файлы:\n(<b>Документ</b>, <b>фотография</b> или <b>аудио</b>)",
-			reply_markup = keyboards.create_btn_cancel_download_file()
+			reply_markup = keyboards.create_btn_cancel("-")
 		)
 
 	elif choice_date < current_date:
@@ -181,8 +180,7 @@ async def process_create_note_date_completion_state(call: types.CallbackQuery, s
 			data["number_month"] = int(parse_date["number_month"].group(1))
 			data["number_year"] = int(parse_date["number_year"].group(1))
 
-		choice_date = helpers.get_pub_date_note(date = choice_date)
-		choice_date = re.sub(r"\s\d{0,2}:\d{0,2}", "", choice_date)
+		choice_date = helpers.set_choice_date_for_text(choice_date = choice_date)
 		answer_text = f"Вы выбрали: {choice_date}"
 
 		helpers.cleans_dict_date()
@@ -193,7 +191,7 @@ async def process_create_note_date_completion_state(call: types.CallbackQuery, s
 		await bot.send_message(
 			call.from_user.id,
 			"Прикрепите файлы:\n(<b>Документ</b>, <b>фотография</b> или <b>аудио</b>)",
-			reply_markup = keyboards.create_btn_cancel_download_file()
+			reply_markup = keyboards.create_btn_cancel("-")
 		)
 
 
@@ -209,6 +207,15 @@ async def process_create_note_date_completion_change_month(call: types.CallbackQ
 
 
 async def process_view_prev_next_month_date(data: dict):
+	"""
+	:param data -> dict keys:
+		id - callback id
+		data_text - callback данные
+		from_user_id - идентификатор пользователя
+		message_message_id - идентификатор callback сообщения
+		is_btn_choice_date_not - показывать ли кнопку (без выбора даты)
+		text - выводимый текст
+	"""
 	await bot.answer_callback_query(data["id"])
 
 	action = re.search(r":(\w{0,10})", data["data_text"]).group(1)
@@ -230,7 +237,11 @@ async def process_view_prev_next_month_date(data: dict):
 		text = data["text"]
 	)
 
-async def send_message_date_calendar(id: int, is_btn_choice_date_not: bool, text: str):
+async def send_message_date_calendar(
+	id: int,
+	is_btn_choice_date_not: bool,
+	text: str
+	):
 	await bot.send_message(
         id,
         f"{text}\n<b>-- {MONTHS[str(DATE['month'])].upper()} --</b>",
@@ -239,49 +250,32 @@ async def send_message_date_calendar(id: int, is_btn_choice_date_not: bool, text
 
 
 async def process_create_note_file_download(msg: types.Message, state: FSMContext):
-	state = dp.current_state(user = msg.from_user.id)
-
 	with Session.begin() as session:
 		user_id = session.query(User).filter(User.username == msg.from_user.username).first().id
 
 	if msg.text == None or msg.text.strip() != "-":
-		file_id = None
-		file_extension = None
+		data_file = await helpers.set_settings_file_for_note(msg)
 
-		if msg.document:
-			file_id = msg.document.file_id
-			file_extension = FILE_EXTENSION["doc"]
-
-		elif msg.photo:
-			file_id = msg.photo[len(msg.photo) - 1].file_id
-			file_extension = FILE_EXTENSION["photo"]
-
-		elif msg.audio:
-			file_id = msg.audio.file_id
-			file_extension = FILE_EXTENSION["audio"]
-
-		file = await bot.get_file(file_id)
-		file_path = file.file_path
-		file_name = file_path.split("/")[-1]
-		directory = f'{STATIC_FILES}/{file_path.split("/")[0]}/{file_name}'
-
-		await bot.download_file(file_path, directory)
+		await bot.download_file(
+			data_file["file_path"],
+			data_file["directory"]
+		)
 
 		async with state.proxy() as data:
 			helpers.add_db_new_file(data = {
-				"file_path": directory,
-				"file_path_id": file_id,
-				"file_extension": file_extension
+				"file_path": data_file["directory"],
+				"file_path_id": data_file["file_id"],
+				"file_extension": data_file["file_extension"]
 			}, username = msg.from_user.username)
 
 			with Session.begin() as session:
 				data["file"] = session.query(File).filter_by(
-					user_id = user_id, file_path_id = file_id
+					user_id = user_id, file_path_id = data_file["file_id"]
 				).first().id
 
 			helpers.add_db_new_note(data = data, username = msg.from_user.username)
 
-	else:
+	elif msg.text.strip() == "-":
 		async with state.proxy() as data:
 			helpers.add_db_new_note(data = data, username = msg.from_user.username)
 
@@ -364,10 +358,18 @@ async def process_view_note_on_category_state(msg: types.Message):
 
 		else:
 			if not notes:
-				await bot.send_message(msg.from_user.id, "Записей нет!", reply_markup = types.ReplyKeyboardRemove())
+				await bot.send_message(
+					msg.from_user.id,
+					"Записей нет!",
+					reply_markup = types.ReplyKeyboardRemove()
+				)
 
 			else:
-				await bot.send_message(msg.from_user.id, "Записи:", reply_markup = types.ReplyKeyboardRemove())
+				await bot.send_message(
+					msg.from_user.id,
+					"Записи:",
+					reply_markup = types.ReplyKeyboardRemove()
+				)
 				await process_view_note_list_iteration(notes, msg.from_user.id)
 
 			await state.reset_state()
@@ -452,6 +454,169 @@ async def process_view_note_on_date_change_month(call: types.CallbackQuery):
 		"is_btn_choice_date_not": False,
 		"text": "Выберите 2 периода даты:"
 	})
+
+
+async def process_edit_note(call: types.CallbackQuery):
+	await bot.answer_callback_query(call.id)
+
+	state = dp.current_state(user = call.from_user.id)
+
+	async with state.proxy() as data:
+		data["note_id"] = int(re.search(r"\d{1,10}", call.data).group(0))
+
+	await set_state_edit_note(call.from_user.id, state)
+
+
+async def process_edit_note_state(msg: types.Message, state: FSMContext):
+	text = msg.text.strip()
+	text = re.sub(r"\s", "_", text).lower()
+	username = msg.from_user.username
+
+	if text == "+":
+		data = await state.get_data()
+		data["username"] = username
+
+		if "param_edit" in data:
+			del data["param_edit"]
+
+		await helpers.update_note(data)
+
+		await state.finish()
+		await bot.send_message(
+			msg.from_user.id,
+			"Редактирование завершено!",
+			reply_markup = types.ReplyKeyboardRemove()
+		)
+
+	else:
+		param_edit = PARAMS_EDIT[text]
+
+		async with state.proxy() as data:
+			data["param_edit"] = param_edit
+
+		if param_edit == "category_id":
+			categories = await helpers.get_categories(username = username)
+
+			if not categories:
+				await bot.send_message(
+					msg.from_user.id,
+					"Категории отсуствуют!<br>Выберите параметр для редактирования:"
+				)
+
+			else:
+				reply_markup = keyboards.create_btns_for_choice_categories(categories)
+				await state.set_state(StatesNote.all()[StatesNote.all().index("state_edit_note_param")])
+
+		elif param_edit == "complete_date":
+			reply_markup = keyboards.create_btn_cancel("-")
+
+			await state.set_state(StatesNote.all()[StatesNote.all().index("state_edit_note_param_date")])
+			await send_message_date_calendar(
+				id = msg.from_user.id,
+				is_btn_choice_date_not = True,
+				text = "Выберите дату по истечению времени выполнения заметки:"
+			)
+
+		elif param_edit == "file":
+			reply_markup = keyboards.create_btn_cancel("-")
+			await state.set_state(StatesNote.all()[StatesNote.all().index("state_edit_note_param_file")])
+
+		else:
+			reply_markup = keyboards.create_btn_cancel("-")
+			await state.set_state(StatesNote.all()[StatesNote.all().index("state_edit_note_param")])
+
+		await bot.send_message(
+			msg.from_user.id,
+			"Новая запись:",
+			reply_markup = reply_markup
+		)
+
+
+async def process_edit_note_state_param(msg: types.Message, state: FSMContext):
+	text = msg.text.strip()
+
+	if text != "-":
+		async with state.proxy() as data:
+			data[f"{data['param_edit']}"] = text
+
+	await set_state_edit_note(msg.from_user.id, state)
+
+
+async def process_edit_note_change_month(call: types.CallbackQuery, state: FSMContext):
+	await process_view_prev_next_month_date(data = {
+		"id": call.id,
+		"from_user_id": call.from_user.id,
+		"message_message_id": call.message.message_id,
+		"data_text": call.data,
+		"is_btn_choice_date_not": True,
+		"text": "Выберите дату по истечению времени выполнения заметки:"
+	})
+
+
+async def process_edit_note_state_set_date(call: types.CallbackQuery, state: FSMContext):
+	parse_date = helpers.parse_date(data = call.data)
+	choice_date = False
+
+	if parse_date["number_day"]:
+		choice_date = helpers.set_choice_date(parse_date)
+
+	current_date = DT.datetime.now()
+
+	if re.search(r"none", call.data):
+		await bot.answer_callback_query(call.id, text = "Даты не существует!")
+
+	elif re.search(r"not", call.data):
+		async with state.proxy() as data:
+			data[f"{data['param_edit']}"] = "not"
+
+		await bot.answer_callback_query(call.id, text = "Вы выбрали: без даты")
+		await set_state_edit_note(call.from_user.id, state)
+
+	elif choice_date < current_date:
+		await bot.answer_callback_query(call.id, text = "Прошедшая дата!")
+
+	elif parse_date["number_day"]:
+		async with state.proxy() as data:
+			data[f"{data['param_edit']}"] = {}
+			data[f"{data['param_edit']}"]["number_day"] = int(parse_date["number_day"].group(1))
+			data[f"{data['param_edit']}"]["number_month"] = int(parse_date["number_month"].group(1))
+			data[f"{data['param_edit']}"]["number_year"] = int(parse_date["number_year"].group(1))
+
+		choice_date = helpers.set_choice_date_for_text(choice_date = choice_date)
+
+		helpers.cleans_dict_date()
+
+		await bot.answer_callback_query(
+			call.id,
+			text = f"Вы выбрали: {choice_date}"
+		)
+
+		await set_state_edit_note(call.from_user.id, state)
+
+
+async def process_edit_note_state_set_file(msg: types.Message, state: FSMContext):
+	with Session.begin() as session:
+		user_id = session.query(User).filter(
+			User.username == msg.from_user.username
+		).first().id
+
+	if msg.text == None or msg.text.strip() != "-":
+		async with state.proxy() as data:
+			data[f"{data['param_edit']}"] = await helpers.set_settings_file_for_note(msg)
+
+		await set_state_edit_note(msg.from_user.id, state)
+
+	elif msg.text.strip() == "-":
+		await set_state_edit_note(msg.from_user.id, state)
+
+
+async def set_state_edit_note(user_id: int, state: FSMContext):
+	await state.set_state(StatesNote.all()[StatesNote.all().index("state_edit_note")])
+	await bot.send_message(
+		user_id,
+		"Выберите параметр для редактирования:",
+		reply_markup = keyboards.create_btns_for_edit_note()
+	)
 
 
 async def process_delete_note(call: types.CallbackQuery):
@@ -549,10 +714,18 @@ def reqister_handler_note():
 		content_types = [ContentType.AUDIO, ContentType.DOCUMENT, ContentType.PHOTO, ContentType.TEXT]
 	)
 	dp.register_message_handler(process_view_note_on_category_state, state = StatesNote.STATE_VIEW_NOTE_ON_CATEGORY)
+	dp.register_message_handler(process_edit_note_state, state = StatesNote.STATE_EDIT_NOTE)
+	dp.register_message_handler(process_edit_note_state_param, state = StatesNote.STATE_EDIT_NOTE_PARAM)
+	dp.register_message_handler(
+		process_edit_note_state_set_file,
+		state = StatesNote.STATE_EDIT_NOTE_PARAM_FILE,
+		content_types = [ContentType.AUDIO, ContentType.DOCUMENT, ContentType.PHOTO, ContentType.TEXT]
+	)
 
 	dp.register_callback_query_handler(process_create_note, lambda c: c.data == 'create_note')
 	dp.register_callback_query_handler(process_delete_note, text_contains = 'delete_note_')
 	dp.register_callback_query_handler(process_complete_note, text_contains = 'complete_note_')
+	dp.register_callback_query_handler(process_edit_note, text_contains = 'edit_note_')
 	dp.register_callback_query_handler(
 		process_create_note_date_completion_state,
 		text_contains = 'choice_date_',
@@ -575,4 +748,14 @@ def reqister_handler_note():
 		process_create_note_date_completion_change_month,
 		text_contains = 'month_date_action',
 		state = FSMFormNote.date_completion
+	)
+	dp.register_callback_query_handler(
+		process_edit_note_change_month,
+		text_contains = "month_date_action",
+		state = StatesNote.STATE_EDIT_NOTE_PARAM_DATE
+	)
+	dp.register_callback_query_handler(
+		process_edit_note_state_set_date,
+		text_contains = 'choice_date_',
+		state = StatesNote.STATE_EDIT_NOTE_PARAM_DATE
 	)

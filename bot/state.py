@@ -29,6 +29,10 @@ class StatesNote(Helper):
 
 	STATE_VIEW_NOTE_ON_CATEGORY = ListItem()
 	STATE_VIEW_NOTE_ON_DATE = ListItem()
+	STATE_EDIT_NOTE = ListItem()
+	STATE_EDIT_NOTE_PARAM = ListItem()
+	STATE_EDIT_NOTE_PARAM_DATE = ListItem()
+	STATE_EDIT_NOTE_PARAM_FILE = ListItem()
 
 
 class StatesCategory(Helper):

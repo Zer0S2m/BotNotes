@@ -71,15 +71,18 @@ def create_btns_for_choice_categories(categoies: list) -> ReplyKeyboardMarkup:
 
 
 def create_inline_btns_for_note(note: Note, is_file: bool) -> InlineKeyboardMarkup:
-	control_note = InlineKeyboardMarkup(row_width = 2)
+	control_note = InlineKeyboardMarkup(row_width = 3)
 
 	btn_delete_note = InlineKeyboardButton(
-		emoji.emojize('Удалить :wastebasket:'), callback_data = f"delete_note_{note.id}:file={is_file}"
+		emoji.emojize(':cross_mark:'), callback_data = f"delete_note_{note.id}:file={is_file}"
 	)
 	btn_complete_note = InlineKeyboardButton(
-		emoji.emojize('Завершить :check_mark_button:'), callback_data = f"complete_note_{note.id}:file={is_file}"
+		emoji.emojize(':check_mark_button:'), callback_data = f"complete_note_{note.id}:file={is_file}"
 	)
-	control_note.row(btn_delete_note, btn_complete_note)
+	btn_edit_note = InlineKeyboardButton(
+		emoji.emojize(":memo:"), callback_data = f"edit_note_{note.id}"
+	)
+	control_note.row(btn_delete_note, btn_complete_note, btn_edit_note)
 
 	return control_note
 
@@ -134,21 +137,30 @@ def last_day_of_month(any_day):
 	return next_month - DT.timedelta(days = next_month.day)
 
 
-def create_btn_cancel_download_file() -> ReplyKeyboardMarkup:
-	control_download_file = ReplyKeyboardMarkup(resize_keyboard = True)
+def create_btn_cancel(text_btn: str) -> ReplyKeyboardMarkup:
+	control_btn_cancel = ReplyKeyboardMarkup(resize_keyboard = True)
 
-	control_download_file.add(
-		KeyboardButton("-")
+	control_btn_cancel.add(
+		KeyboardButton(text_btn)
 	)
 
-	return control_download_file
+	return control_btn_cancel
 
 
-def create_btn_cancel_title_note() -> ReplyKeyboardMarkup:
-	control_note_create_title = ReplyKeyboardMarkup(resize_keyboard = True)
-
-	control_note_create_title.add(
-		KeyboardButton("-")
+def create_btns_for_edit_note() -> ReplyKeyboardMarkup:
+	control_note_edit = ReplyKeyboardMarkup(
+		resize_keyboard = True, row_width = 2
 	)
 
-	return control_note_create_title
+	btns_edit_note = [
+		KeyboardButton("Заголовок"),
+		KeyboardButton("Описание"),
+		KeyboardButton("Категория"),
+		KeyboardButton("Дата завершения"),
+		KeyboardButton("Файл"),
+		KeyboardButton("+")
+	]
+
+	control_note_edit.add(*btns_edit_note)
+
+	return control_note_edit

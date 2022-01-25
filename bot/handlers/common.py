@@ -41,7 +41,7 @@ async def process_start_command(msg: types.Message, state: FSMContext):
 	await bot.send_message(msg.from_user.id, MESSAGES["start"].format(name = msg.from_user.first_name))
 
 
-async def process_help_command(msg: types.Message):
+async def process_help_command(msg: types.Message, state: FSMContext):
 	state = dp.current_state(user = msg.from_user.id)
 	await state.finish()
 
@@ -63,6 +63,6 @@ async def cmd_cancel(msg: types.Message, state: FSMContext):
 def reqister_handler_common():
 	dp.register_message_handler(process_start_command, commands = ['start'], state = "*")
 	dp.register_message_handler(process_help_command, commands = ["help"])
-	dp.register_message_handler(process_info_command, commands = ["info"])
+	dp.register_message_handler(process_info_command, commands = ["info"], state = "*")
 	dp.register_message_handler(cmd_cancel, commands = ["cancel"], state = "*")
 	dp.register_message_handler(cmd_cancel, Text(equals = "отмена", ignore_case = True), state = "*")
