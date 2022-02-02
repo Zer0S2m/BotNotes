@@ -108,6 +108,10 @@ def get_pub_date_note(date: DT.datetime) -> str:
 	return f'{date.strftime("%d.%m.%Y")} {date.strftime("%H:%M")}'
 
 
+def set_title_category(title: str) -> str:
+	return title.strip().lower()
+
+
 def change_dict_date(data: dict):
 	""":param data - key: 'month'"""
 

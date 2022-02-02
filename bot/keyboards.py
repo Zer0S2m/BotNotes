@@ -57,7 +57,7 @@ def create_btns_for_choice_categories(categoies: list) -> ReplyKeyboardMarkup:
 	categoies_choice = []
 
 	for category_in in range(0, len(categoies)):
-		category_title = categoies[category_in].title
+		category_title = categoies[category_in].title.title()
 		category_btn = KeyboardButton(category_title)
 
 		categoies_choice.append(category_btn)

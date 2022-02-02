@@ -34,11 +34,12 @@ async def process_create_category(call: types.CallbackQuery):
 
 
 async def process_create_category_state(msg: types.Message, state: FSMContext):
-	state = dp.current_state(user = msg.from_user.id)
-	title = msg.text.strip()
+	title = helpers.set_title_category(title = msg.text)
 
 	with Session.begin() as session:
-		user_id = session.query(User).filter(User.username == msg.from_user.username).first().id
+		user_id = session.query(User).filter(
+			User.username == msg.from_user.username
+		).first().id
 		category = session.query(Category).filter_by(
 			title = title, user_id = user_id
 		).first()
@@ -56,7 +57,7 @@ async def process_create_category_state(msg: types.Message, state: FSMContext):
 	else:
 		with Session.begin() as session:
 			new_category = Category(
-				title = msg.text.strip(),
+				title = title,
 				user_id = user_id
 			)
 
@@ -89,7 +90,7 @@ async def process_view_category(call: types.CallbackQuery):
 					category_id = categories[category_in].id, user_id = user_id
 				).all())
 
-			text += f"\n{category_in + 1}) {categories[category_in].title} ({notes_at_category})"
+			text += f"\n{category_in + 1}) {categories[category_in].title.title()} ({notes_at_category})"
 
 		await bot.send_message(call.from_user.id, text)
 

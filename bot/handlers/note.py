@@ -332,7 +332,7 @@ async def process_view_note_on_category(call: types.CallbackQuery):
 
 async def process_view_note_on_category_state(msg: types.Message):
 	state = dp.current_state(user = msg.from_user.id)
-	title = msg.text.strip()
+	title = helpers.set_title_category(msg.text.strip())
 
 	with Session.begin() as session:
 		user_id = session.query(User).filter(User.username == msg.from_user.username).first().id
