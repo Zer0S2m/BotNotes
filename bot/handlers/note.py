@@ -116,7 +116,7 @@ async def process_create_note_text_state(msg: types.Message, state: FSMContext):
 
 async def process_create_note_category_state(msg: types.Message, state: FSMContext):
 	state = dp.current_state(user = msg.from_user.id)
-	title = msg.text.strip()
+	title = msg.text.strip().lower()
 
 	with Session.begin() as session:
 		user_id = session.query(User).filter(User.username == msg.from_user.username).first().id
@@ -534,6 +534,24 @@ async def process_edit_note_state(msg: types.Message, state: FSMContext):
 
 async def process_edit_note_state_param(msg: types.Message, state: FSMContext):
 	text = msg.text.strip()
+
+	async with state.proxy() as data:
+		if data["param_edit"] == "category_id":
+			with Session.begin() as session:
+				user_id = session.query(User).filter(
+					User.username == msg.from_user.username
+				).first().id
+				category = session.query(Category).filter_by(
+					user_id = user_id, title = text.lower()
+				).first();
+
+				if not category:
+					await bot.send_message(
+						msg.from_user.id,
+						"Категория с таким названием не существует!"
+					)
+					await set_state_edit_note(msg.from_user.id, state)
+					return False;
 
 	if text != "-":
 		async with state.proxy() as data:

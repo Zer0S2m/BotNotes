@@ -80,7 +80,7 @@ def create_text_note(note: Note) -> dict:
 		text = f"<b>Заголовок</b> - {note.title}\n{text}"
 
 	if note.category:
-		text += f"\n\n<b>Категория</b> - {note.category.title}"
+		text += f"\n\n<b>Категория</b> - {note.category.title.title()}"
 
 	if str(note.complete_date)[0] != "0" and len(note.complete_date) > 0:
 		complete_date_split = list(map(int, note.complete_date.split("-")))
