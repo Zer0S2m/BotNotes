@@ -4,7 +4,7 @@ from sqlalchemy import (
 	Column, Integer, String,
 	DateTime, ForeignKey, Text
 )
-from sqlalchemy import create_engine
+from sqlalchemy.ext.asyncio import create_async_engine
 from sqlalchemy.orm import relationship
 from sqlalchemy.ext.declarative import declarative_base
 
@@ -14,7 +14,7 @@ from config import (
 )
 
 
-engine = create_engine(f"sqlite:///{NAME_DB}.db")
+engine = create_async_engine(f"sqlite+aiosqlite:///{NAME_DB}.db")
 Base = declarative_base()
 
 

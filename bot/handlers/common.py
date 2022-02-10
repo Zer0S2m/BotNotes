@@ -2,6 +2,8 @@ from aiogram import types
 from aiogram.dispatcher import FSMContext
 from aiogram.dispatcher.filters import Text
 
+from sqlalchemy.future import select
+
 import emoji
 
 from config import MESSAGES
@@ -14,14 +16,17 @@ from dispatcher import (
 )
 
 
-def create_table_statistics(username: str):
-	with Session.begin() as session:
-		if not session.query(Statistics).filter(
-				Statistics.user_id == session.query(User).filter(User.username == username).first().id
-			).first():
+async def create_table_statistics(username: str):
+	async with Session.begin() as session:
+		user_id = await session.execute(select(User).filter_by(
+			username = username
+		))
+		user_id = user_id.scalars().first().id
+		statistics = await session.execute(select(Statistics).filter_by(
+			user_id = user_id
+		))
 
-			user_id = session.query(User).filter(User.username == username).first().id
-
+		if not statistics.scalars().first():
 			new_statistics = Statistics(user_id = user_id)
 			session.add(new_statistics)
 
@@ -30,13 +35,20 @@ async def process_start_command(msg: types.Message, state: FSMContext):
 	state = dp.current_state(user = msg.from_user.id)
 	await state.finish()
 
-	with Session.begin() as session:
-		if not session.query(User).filter(User.username == msg.from_user.username).first():
-			new_user = User(first_name = msg.from_user.first_name, username = msg.from_user.username)
+	async with Session.begin() as session:
+		user = await session.execute(select(User).filter_by(
+			username = msg.from_user.username
+		))
+
+		if not user.scalars().first():
+			new_user = User(
+				first_name = msg.from_user.first_name,
+				username = msg.from_user.username
+			)
 
 			session.add(new_user)
 
-	create_table_statistics(username = msg.from_user.username)
+	await create_table_statistics(username = msg.from_user.username)
 
 	await bot.send_message(msg.from_user.id, MESSAGES["start"].format(name = msg.from_user.first_name))
 

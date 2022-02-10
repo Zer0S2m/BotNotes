@@ -3,6 +3,8 @@ import re
 from aiogram import types
 from aiogram.dispatcher import FSMContext
 
+from sqlalchemy.future import select
+
 import emoji
 
 from config import (
@@ -36,13 +38,14 @@ async def process_create_category(call: types.CallbackQuery):
 async def process_create_category_state(msg: types.Message, state: FSMContext):
 	title = helpers.set_title_category(title = msg.text)
 
-	with Session.begin() as session:
-		user_id = session.query(User).filter(
-			User.username == msg.from_user.username
-		).first().id
-		category = session.query(Category).filter_by(
+	async with Session.begin() as session:
+		user_id = await session.execute(select(User).filter_by(
+			username = msg.from_user.username
+		))
+		user_id = user_id.scalars().first().id
+		category = await session.execute(select(Category).filter_by(
 			title = title, user_id = user_id
-		).first()
+		))
 
 	if len(title) > LIMIT_CATEGORY:
 		text_reply = f"Превышен лимит символов!\n{INFO_TEXT}"
@@ -51,11 +54,11 @@ async def process_create_category_state(msg: types.Message, state: FSMContext):
 		text_reply = \
 			f"Название категория не может начинаться с <b>символов</b> или с <b>цифры</b>!\nПерезапишите название!\n{INFO_TEXT}"
 
-	elif category:
+	elif category.scalars().first():
 		text_reply = "Категория с таким названием уже существует!\nПерезапишите название:"
 
 	else:
-		with Session.begin() as session:
+		async with Session.begin() as session:
 			new_category = Category(
 				title = title,
 				user_id = user_id
@@ -82,13 +85,17 @@ async def process_view_category(call: types.CallbackQuery):
 		text = "Категории:\n"
 
 		for category_in in range(0, len(categories)):
-			with Session.begin() as session:
-				user_id = session.query(User).filter_by(
+			async with Session.begin() as session:
+				user_id = await session.execute(select(User).filter_by(
 					username = username
-				).first().id
-				notes_at_category = len(session.query(Note).filter_by(
-					category_id = categories[category_in].id, user_id = user_id
-				).all())
+				))
+				user_id = user_id.scalars().first().id
+
+				notes_at_category = await session.execute(select(Note).filter_by(
+					category_id = categories[category_in].id,
+					user_id = user_id
+				))
+				notes_at_category = len(notes_at_category.scalars().all())
 
 			text += f"\n{category_in + 1}) {categories[category_in].title.title()} ({notes_at_category})"
 
@@ -115,24 +122,28 @@ async def process_delete_category(call: types.CallbackQuery):
 
 
 async def process_delete_category_state(msg: types.Message):
-	with Session.begin() as session:
-		user_id = session.query(User).filter(User.username == msg.from_user.username).first().id
+	async with Session.begin() as session:
+		user_id = await session.execute(select(User).filter_by(
+			username = msg.from_user.username
+		))
+		user_id = user_id.scalars().first().id
 
 	state = dp.current_state(user = msg.from_user.id)
-	title = msg.text.strip()
+	title = msg.text.strip().lower()
 
 	category_deleted = False
-	with Session.begin() as session:
-		category_deleted = session.query(Category).filter_by(
+	async with Session.begin() as session:
+		category_deleted = await session.execute(select(Category).filter_by(
 			title = title, user_id = user_id
-		).first()
+		))
+		category_deleted = category_deleted.scalars().first()
 
 		if not category_deleted:
-			reply_markup = False
-			text_send_msg = "Данной категории не существует!\nПерезапишите название:"
+			reply_markup = {}
+			text_send_msg = "Данной категории не существует! Перезапишите название:"
 
 		else:
-			session.delete(category_deleted)
+			await session.delete(category_deleted)
 			await state.reset_state()
 
 			reply_markup = types.ReplyKeyboardRemove()

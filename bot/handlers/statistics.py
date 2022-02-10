@@ -1,5 +1,7 @@
 from aiogram import types
 
+from sqlalchemy.future import select
+
 from models import Statistics
 from models import User
 
@@ -11,11 +13,17 @@ from config import MESSAGES
 
 
 async def process_statistics_control(msg: types.Message):
-	with Session.begin() as session:
-		user_id = session.query(User).filter(User.username == msg.from_user.username).first().id
-		statistics = session.query(Statistics).filter_by(user_id = user_id).first()
+	async with Session.begin() as session:
+		user_id = await session.execute(select(User).filter_by(
+			username = msg.from_user.username
+		))
+		user_id = user_id.scalars().first().id
+		statistics = await session.execute(select(Statistics).filter_by(
+			user_id = user_id
+		))
+		statistics = statistics.scalars().first()
 
-		session.close()
+		await session.close()
 
 	text = MESSAGES["statistics"].format(
 		total_notes = f"{statistics.total_notes}",

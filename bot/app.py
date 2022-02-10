@@ -24,7 +24,7 @@ async def set_commands(bot: Bot):
 	await bot.set_my_commands(commands)
 
 
-def register_handlers():
+async def register_handlers():
 	common.reqister_handler_common()
 	note.reqister_handler_note()
 	category.reqister_handler_category()
@@ -32,7 +32,7 @@ def register_handlers():
 
 
 async def main():
-	register_handlers()
+	await register_handlers()
 	await set_commands(bot = bot)
 
 	await dp.start_polling()
