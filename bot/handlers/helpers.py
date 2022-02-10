@@ -180,7 +180,7 @@ async def delete_note(
 			if note_deleted.file_id:
 				file = await session.execute(select(File).filter_by(
 					id = note_deleted.file_id,
-					user_id = delete_note.user_id
+					user_id = note_deleted.user_id
 				))
 				file = file.scalars().first()
 
@@ -251,7 +251,6 @@ async def update_note(data: dict):
 			await update_file_db(update_note, data)
 
 		if "file" in data:
-			print(True)
 			await add_db_new_file(data= {
 				"file_path": data["file"]["directory"],
 				"file_path_id": data["file"]["file_id"],
@@ -269,7 +268,6 @@ async def update_note(data: dict):
 				file_path_id = data["file"]["file_id"]
 			))
 			new_file = new_file.scalars().first()
-			print(new_file)
 
 			del data["file"]
 
@@ -313,6 +311,10 @@ def update_params_note_db(note: Note, data: dict):
 
 def set_complete_date_update_note(data: dict) -> dict:
 	if "complete_date" in data:
+		if data["complete_date"] == "not":
+			data["complete_date"] = "0"
+			return data
+
 		data["complete_date"] = set_complete_date_note({
 			"number_year": data["complete_date"]["number_year"],
 			"number_month": data["complete_date"]["number_month"],
