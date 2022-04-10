@@ -2,53 +2,28 @@ from aiogram import types
 from aiogram.dispatcher import FSMContext
 from aiogram.dispatcher.filters import Text
 
-from sqlalchemy.future import select
-
 import emoji
 
 from config import MESSAGES
 
-from models import User
-from models import Statistics
-
 from dispatcher import (
-	dp, bot, Session
+	dp, bot
 )
 
-
-async def create_table_statistics(username: str):
-	async with Session.begin() as session:
-		user_id = await session.execute(select(User).filter_by(
-			username = username
-		))
-		user_id = user_id.scalars().first().id
-		statistics = await session.execute(select(Statistics).filter_by(
-			user_id = user_id
-		))
-
-		if not statistics.scalars().first():
-			new_statistics = Statistics(user_id = user_id)
-			session.add(new_statistics)
+from utils.db import (
+	create_user_db, get_user_db, create_statistics_db
+)
 
 
 async def process_start_command(msg: types.Message, state: FSMContext):
 	state = dp.current_state(user = msg.from_user.id)
 	await state.finish()
 
-	async with Session.begin() as session:
-		user = await session.execute(select(User).filter_by(
-			username = msg.from_user.username
-		))
+	user = await get_user_db(msg.from_user.username)
+	if not user:
+		user = await create_user_db(msg.from_user.username, msg.from_user.first_name)
 
-		if not user.scalars().first():
-			new_user = User(
-				first_name = msg.from_user.first_name,
-				username = msg.from_user.username
-			)
-
-			session.add(new_user)
-
-	await create_table_statistics(username = msg.from_user.username)
+	await create_statistics_db(user.id)
 
 	await bot.send_message(msg.from_user.id, MESSAGES["start"].format(name = msg.from_user.first_name))
 
@@ -56,14 +31,12 @@ async def process_start_command(msg: types.Message, state: FSMContext):
 async def process_help_command(msg: types.Message, state: FSMContext):
 	state = dp.current_state(user = msg.from_user.id)
 	await state.finish()
-
 	await bot.send_message(msg.from_user.id, MESSAGES["help"])
 
 
 async def process_info_command(msg: types.Message):
 	state = dp.current_state(user = msg.from_user.id)
 	await state.finish()
-
 	await bot.send_message(msg.from_user.id, MESSAGES["info"])
 
 

@@ -1,5 +1,8 @@
 import datetime as DT
 
+from typing import List
+from typing import Union
+
 from aiogram.types import (
 	ReplyKeyboardMarkup, InlineKeyboardMarkup,
 	KeyboardButton, InlineKeyboardButton
@@ -8,6 +11,7 @@ from aiogram.types import (
 import emoji
 
 from models import Note
+from models import Category
 
 from config import DATE
 
@@ -49,7 +53,9 @@ control_categories.row(btn_create_category, btn_delete_category)
 control_categories.add(btn_view_all_category)
 
 
-def create_btns_for_choice_categories(categoies: list) -> ReplyKeyboardMarkup:
+def create_btns_for_choice_categories(
+	categoies: List[Category]
+) -> Union[bool, ReplyKeyboardMarkup]:
 	if not categoies:
 		return False
 
@@ -70,7 +76,10 @@ def create_btns_for_choice_categories(categoies: list) -> ReplyKeyboardMarkup:
 	return control_choice_category
 
 
-def create_inline_btns_for_note(note: Note, is_file: bool) -> InlineKeyboardMarkup:
+def create_inline_btns_for_note(
+	note: Note,
+	is_file: bool
+) -> InlineKeyboardMarkup:
 	control_note = InlineKeyboardMarkup(row_width = 3)
 
 	btn_delete_note = InlineKeyboardButton(
@@ -132,7 +141,7 @@ def create_inline_btns_for_choice_date(is_btn_choice_date_not: bool) -> InlineKe
 	return control_note_date
 
 
-def last_day_of_month(any_day):
+def last_day_of_month(any_day) -> DT.datetime:
 	next_month = any_day.replace(day = 28) + DT.timedelta(days = 4)
 	return next_month - DT.timedelta(days = next_month.day)
 

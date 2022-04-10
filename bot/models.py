@@ -19,8 +19,6 @@ Base = declarative_base()
 
 
 class User(Base):
-	"""docstring for User"""
-
 	__tablename__ = 'user'
 
 	id = Column(Integer, primary_key = True)
@@ -37,8 +35,6 @@ class User(Base):
 
 
 class Note(Base):
-	"""docstring for Note"""
-
 	__tablename__ = "note"
 
 	id = Column(Integer, primary_key = True)
@@ -58,8 +54,6 @@ class Note(Base):
 
 
 class Category(Base):
-	"""docstring for Category"""
-
 	__tablename__ = "category"
 
 	id = Column(Integer, primary_key = True)
@@ -72,8 +66,6 @@ class Category(Base):
 
 
 class Statistics(Base):
-	"""docstring for Statistics"""
-
 	__tablename__ = "statistics"
 
 	id = Column(Integer, primary_key = True)
@@ -88,8 +80,6 @@ class Statistics(Base):
 
 
 class File(Base):
-	"""docstring for File"""
-
 	__tablename__ = "file"
 
 	id = Column(Integer, primary_key = True)

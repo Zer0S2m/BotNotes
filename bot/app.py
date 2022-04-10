@@ -34,7 +34,6 @@ async def register_handlers():
 async def main():
 	await register_handlers()
 	await set_commands(bot = bot)
-
 	await dp.start_polling()
 
 

@@ -1,45 +1,48 @@
 import re
 import datetime as DT
+from typing import List
 
 from aiogram import types
 from aiogram.types import ContentType
 from aiogram.dispatcher import FSMContext
 
-from sqlalchemy import and_
-from sqlalchemy.future import select
-
 import emoji
 
 from config import (
-	STATIC_FILES, FILE_EXTENSION,
+	DATE, FILE_EXTENSION,
 	INFO_TEXT, LIMIT_CATEGORY,
 	LIMIT_TITLE, LIMIT_TEXT,
 	PARAMS_EDIT, MONTHS,
-	DATE,
 )
 
-from models import (
-	User, Note, Category,
-	File
-)
+from models import Note
 
 from state import StatesNote
 from state import FSMFormNote
 
 from dispatcher import (
-	dp, bot, Session
+	dp, bot
 )
 
-from handlers import helpers
+from utils.db import (
+	get_user_db, get_categories_db, get_category_db,
+	create_file_db, create_note_db, get_notes_db,
+	get_notes_at_category, delete_note_db, edit_note_db,
+	get_notes_on_date_db
+)
+from utils.common import (
+	set_title_category, get_note_id_from_btn_note, set_choice_date_for_text,
+	set_choice_date, cleans_dict_date, set_settings_file_for_note,
+	parse_date_str, create_text_note, change_dict_date,
+	get_dates_periods
+)
 
 import keyboards
 
 
 async def process_create_note(call: types.CallbackQuery):
 	await FSMFormNote.title.set()
-
 	await bot.answer_callback_query(call.id)
-
 	await bot.send_message(
 		call.from_user.id,
 		"Запишите название записи:",
@@ -70,27 +73,8 @@ async def process_create_note_title_state(msg: types.Message, state: FSMContext)
 
 
 async def process_create_note_text_state(msg: types.Message, state: FSMContext):
-	category_db = False
 	state = dp.current_state(user = msg.from_user.id)
 	text = msg.text.strip()
-
-	async with Session.begin() as session:
-		user_id = await session.execute(select(User).filter_by(
-			username = msg.from_user.username
-		))
-		user_id = user_id.scalars().first().id
-		category_db = await session.execute(select(Category).filter_by(
-			user_id = user_id
-		))
-		category_db = category_db.scalars().first()
-
-		if category_db:
-			categoies = await session.execute(select(Category).filter_by(
-				user_id = user_id
-			))
-			categoies = categoies.scalars().all()
-
-		await session.close()
 
 	if len(text) > LIMIT_TEXT:
 		await msg.reply(f"Превышен лимит символов!\n{INFO_TEXT}")
@@ -99,21 +83,19 @@ async def process_create_note_text_state(msg: types.Message, state: FSMContext):
 		async with state.proxy() as data:
 			data['text'] = text
 
-		if category_db:
-			await FSMFormNote.next()
+		user = await get_user_db(msg.from_user.username)
+		categoies = await get_categories_db(user.id)
 
+		if categoies:
+			await FSMFormNote.next()
 			await bot.send_message(
 				msg.from_user.id,
 				"Выберите категорию:",
-				reply_markup = keyboards.create_btns_for_choice_categories(
-					categoies = categoies
-				)
+				reply_markup = keyboards.create_btns_for_choice_categories(categoies = categoies)
 			)
-
 		else:
 			await FSMFormNote.next()
 			await FSMFormNote.next()
-
 			await send_message_date_calendar(
 				id = msg.from_user.id,
 				is_btn_choice_date_not = True,
@@ -123,32 +105,22 @@ async def process_create_note_text_state(msg: types.Message, state: FSMContext):
 
 async def process_create_note_category_state(msg: types.Message, state: FSMContext):
 	state = dp.current_state(user = msg.from_user.id)
-	title = msg.text.strip().lower()
-
-	async with Session.begin() as session:
-		category_db = await session.execute(select(Category).filter_by(
-			title = title
-		))
-		category_db = category_db.scalars().first()
-
-		if category_db:
-			category_db_id = category_db.id
-
-		await session.close()
+	title = set_title_category(msg.text)
+	user = await get_user_db(msg.from_user.username)
+	category = await get_category_db(user.id, title)
 
 	if len(title) > LIMIT_CATEGORY:
 		await msg.send_message(msg.from_user.id, f"Превышен лимит символов!\n{INFO_TEXT}")
 
-	elif not category_db and title != "-":
+	elif not category and title != "-":
 		await bot.send_message(msg.from_user.id, "Категория с таким названием не существует!\nПерезапишите название:")
 
 	else:
 		async with state.proxy() as data:
 			if title != "-":
-				data["category"] = category_db_id
+				data["category"] = category.id
 
 		await FSMFormNote.next()
-
 		await send_message_date_calendar(
 			id = msg.from_user.id,
 			is_btn_choice_date_not = True,
@@ -159,11 +131,11 @@ async def process_create_note_category_state(msg: types.Message, state: FSMConte
 async def process_create_note_date_completion_state(call: types.CallbackQuery, state: FSMContext):
 	answer_text = ""
 
-	parse_date = helpers.parse_date(data = call.data)
+	parse_date = parse_date_str(data = call.data)
 	choice_date = False
 
 	if parse_date["number_day"]:
-		choice_date = helpers.set_choice_date(parse_date)
+		choice_date = set_choice_date(parse_date)
 
 	current_date = DT.datetime.now()
 
@@ -189,10 +161,10 @@ async def process_create_note_date_completion_state(call: types.CallbackQuery, s
 			data["number_month"] = int(parse_date["number_month"].group(1))
 			data["number_year"] = int(parse_date["number_year"].group(1))
 
-		choice_date = helpers.set_choice_date_for_text(choice_date = choice_date)
+		choice_date = set_choice_date_for_text(choice_date)
 		answer_text = f"Вы выбрали: {choice_date}"
 
-		helpers.cleans_dict_date()
+		cleans_dict_date()
 
 		await bot.answer_callback_query(call.id, text = answer_text)
 		await FSMFormNote.next()
@@ -232,11 +204,11 @@ async def process_view_prev_next_month_date(data: dict):
 	await bot.delete_message(chat_id = data["from_user_id"], message_id = data["message_message_id"])
 
 	if action == "prev":
-		helpers.change_dict_date({
+		change_dict_date({
 			"month": DATE["month"] - 1,
 		})
 	elif action == "next":
-		helpers.change_dict_date({
+		change_dict_date({
 			"month": DATE["month"] + 1,
 		})
 
@@ -250,7 +222,7 @@ async def send_message_date_calendar(
 	id: int,
 	is_btn_choice_date_not: bool,
 	text: str
-	):
+):
 	await bot.send_message(
         id,
         f"{text}\n<b>-- {MONTHS[str(DATE['month'])].upper()} --</b>",
@@ -259,14 +231,10 @@ async def send_message_date_calendar(
 
 
 async def process_create_note_file_download(msg: types.Message, state: FSMContext):
-	async with Session.begin() as session:
-		user_id = await session.execute(select(User).filter_by(
-			username = msg.from_user.username
-		))
-		user_id = user_id.scalars().first().id
+	user = await get_user_db(msg.from_user.username)
 
 	if msg.text == None or msg.text.strip() != "-":
-		data_file = await helpers.set_settings_file_for_note(msg)
+		data_file = await set_settings_file_for_note(msg)
 
 		await bot.download_file(
 			data_file["file_path"],
@@ -274,29 +242,23 @@ async def process_create_note_file_download(msg: types.Message, state: FSMContex
 		)
 
 		async with state.proxy() as data:
-			await helpers.add_db_new_file(data = {
+			new_file = await create_file_db(data = {
 				"file_path": data_file["directory"],
 				"file_path_id": data_file["file_id"],
 				"file_extension": data_file["file_extension"],
-				"user_id": user_id
+				"user_id": user.id
 			})
 
-			async with Session.begin() as session:
-				file = await session.execute(select(File).filter_by(
-					user_id = user_id,
-					file_path_id = data_file["file_id"]
-				))
-				file = file.scalars().first()
+			data["file"] = new_file
+			data["user_id"] = user.id
 
-				data["file"] = file
-				data["user_id"] = user_id
-
-			await helpers.add_db_new_note(data = data)
+			await create_note_db(data = data)
 
 	elif msg.text.strip() == "-":
 		async with state.proxy() as data:
-			data["user_id"] = user_id
-			await helpers.add_db_new_note(data = data)
+			data["user_id"] = user.id
+
+		await create_note_db(data = data)
 
 	await state.finish()
 	await bot.send_message(
@@ -310,179 +272,119 @@ async def process_view_note(call: types.CallbackQuery):
 	await bot.answer_callback_query(call.id)
 
 	state = dp.current_state(user = call.from_user.id)
+	user = await get_user_db(call.from_user.username)
+	notes = await get_notes_db(user.id)
 
-	async with Session.begin() as session:
-		user_id = await session.execute(select(User).filter_by(
-			username = call.from_user.username
-		))
-		user_id = user_id.scalars().first().id
-		notes = await session.execute(select(Note).filter_by(
-			user_id = user_id
-		))
-		notes = notes.scalars().all()
+	await state.reset_state()
 
-		await state.reset_state()
+	if not notes:
+		await bot.send_message(call.from_user.id, "Записей нет!")
 
-		if not notes:
-			await bot.send_message(call.from_user.id, "Записей нет!")
-
-		else:
-			await bot.send_message(call.from_user.id, "Записи:")
-			await process_view_note_list_iteration(notes, call.from_user.id)
+	else:
+		await bot.send_message(call.from_user.id, "Записи:")
+		await process_view_note_list_iteration(notes, call.from_user.id)
 
 
 async def process_view_note_on_category(call: types.CallbackQuery):
 	await bot.answer_callback_query(call.id)
 
-	categories = False
-	async with Session.begin() as session:
-		user_id = await session.execute(select(User).filter_by(
-			username = call.from_user.username
-		))
-		user_id = user_id.scalars().first().id
-		categories = await session.execute(select(Category).filter_by(
-			user_id = user_id
-		))
-		categories = categories.scalars().all()
+	user = await get_user_db(call.from_user.username)
+	categories = await get_categories_db(user.id)
 
-		if not categories:
-			await bot.send_message(call.from_user.id, "Категории отсуствуют!")
+	if not categories:
+		await bot.send_message(call.from_user.id, "Категории отсуствуют!")
+	else:
+		state = dp.current_state(user = call.from_user.id)
 
-		else:
-			state = dp.current_state(user = call.from_user.id)
-
-			await state.set_state(StatesNote.all()[StatesNote.all().index("state_view_note_on_category")])
-			await bot.send_message(
-				call.from_user.id,
-				"Выберите категорию:",
-				reply_markup = keyboards.create_btns_for_choice_categories(categories)
-			)
+		await state.set_state(StatesNote.all()[StatesNote.all().index("state_view_note_on_category")])
+		await bot.send_message(
+			call.from_user.id,
+			"Выберите категорию:",
+			reply_markup = keyboards.create_btns_for_choice_categories(categories)
+		)
 
 
 async def process_view_note_on_category_state(msg: types.Message):
 	state = dp.current_state(user = msg.from_user.id)
-	title = helpers.set_title_category(msg.text.strip())
+	title = set_title_category(msg.text)
+	user = await get_user_db(msg.from_user.username)
+	category = await get_category_db(user.id, title)
 
-	async with Session.begin() as session:
-		user_id = await session.execute(select(User).filter_by(
-			username = msg.from_user.username
-		))
-		user_id = user_id.scalars().first().id
-		category_db = await session.execute(select(Category).filter_by(
-			title = title, user_id = user_id
-		))
-		category_db = category_db.scalars().first()
+	if category:
+		notes = await get_notes_at_category(user.id, category.id)
 
-		if category_db:
-			notes = await session.execute(select(Note).filter_by(
-				category_id = category_db.id, user_id = user_id
-			))
-			notes = notes.scalars().all()
+	if title == "-":
+		await bot.send_message(
+			msg.from_user.id,
+			emoji.emojize("Команда отменена :cross_mark:"),
+			reply_markup = types.ReplyKeyboardRemove()
+		)
+		await state.finish()
 
-		if title == "-":
+	elif not category:
+		await bot.send_message(msg.from_user.id, "Категория с таким названием не существует!\nПерезапишите название:")
+	else:
+		if not notes:
 			await bot.send_message(
 				msg.from_user.id,
-				emoji.emojize("Команда отменена :cross_mark:"),
+				"Записей нет!",
 				reply_markup = types.ReplyKeyboardRemove()
 			)
-			await state.reset_state()
-
-		elif not category_db:
-			await bot.send_message(msg.from_user.id, "Категория с таким названием не существует!\nПерезапишите название:")
-
 		else:
-			if not notes:
-				await bot.send_message(
-					msg.from_user.id,
-					"Записей нет!",
-					reply_markup = types.ReplyKeyboardRemove()
-				)
+			await bot.send_message(
+				msg.from_user.id,
+				"Записи:",
+				reply_markup = types.ReplyKeyboardRemove()
+			)
+			await process_view_note_list_iteration(notes, msg.from_user.id)
 
-			else:
-				await bot.send_message(
-					msg.from_user.id,
-					"Записи:",
-					reply_markup = types.ReplyKeyboardRemove()
-				)
-				await process_view_note_list_iteration(notes, msg.from_user.id)
-
-			await state.reset_state()
+		await state.reset_state()
 
 
 async def process_view_note_on_date(call: types.CallbackQuery):
 	await bot.answer_callback_query(call.id)
 
-	async with Session.begin() as session:
-		user_id = await session.execute(select(User).filter_by(
-			username = call.from_user.username
-		))
-		user_id = user_id.scalars().first().id
-		note = await session.execute(select(Note).filter_by(
-			user_id = user_id
-		))
-		note = note.scalars().first()
+	user = await get_user_db(call.from_user.username)
 
-	if note:
+	if user.notes:
 		state = dp.current_state(user = call.from_user.id)
-		await state.set_state(StatesNote.all()[StatesNote.all().index("state_view_note_on_date")])
 
+		await state.set_state(StatesNote.all()[StatesNote.all().index("state_view_note_on_date")])
 		await send_message_date_calendar(
 			id = call.from_user.id,
 			is_btn_choice_date_not = False,
 			text = "Выберите 2 периода даты:"
 		)
-
 	else:
 		await bot.send_message(call.from_user.id, "Записей нет!")
 
 
 async def process_view_note_on_date_state(call: types.CallbackQuery, state: FSMContext):
 	state = dp.current_state(user = call.from_user.id)
-
-	parse_date = helpers.parse_date(data = call.data)
+	parse_date = parse_date_str(data = call.data)
 
 	async with state.proxy() as data:
 		if not "periods" in data:
 			data["periods"] = {
 				"first": f'{parse_date["number_year"].group(1)}-{parse_date["number_month"].group(1)}-{parse_date["number_day"].group(1)}-{0}-{0}-{0}'
 			}
-
 			await bot.answer_callback_query(
 				call.id,
 				text = "Первый период времени выбран! Выберите второй."
 			)
-
 		else:
 			data["periods"]["second"] = \
 				f'{parse_date["number_year"].group(1)}-{parse_date["number_month"].group(1)}-{parse_date["number_day"].group(1)}-{0}-{0}-{0}'
+			cleans_dict_date()
 
-			helpers.cleans_dict_date()
-
-			async with Session.begin() as session:
-				user_id = await session.execute(select(User).filter_by(
-					username = call.from_user.username
-				))
-				user_id = user_id.scalars().first().id
-				dates = sorted([
-					DT.datetime(*list(map(int, data["periods"]["first"].split("-")))),
-					DT.datetime(*list(map(int, data["periods"]["second"].split("-"))))
-				])
-
-				dates[0] = dates[0] + DT.timedelta(hours = 0, minutes = 0, seconds = 0)
-				dates[1] = dates[1] + DT.timedelta(hours = 23, minutes = 59, seconds = 59)
-
-				notes = await session.execute(select(Note).filter(
-					Note.user_id == user_id,
-					and_(Note.pub_date >= dates[0], Note.pub_date <= dates[1])
-				))
-				notes = notes.scalars().all()
-
-				if notes:
-					await bot.send_message(call.from_user.id, "Записи:")
-					await process_view_note_list_iteration(notes, call.from_user.id)
-
-				else:
-					await bot.send_message(call.from_user.id, "Записей нет!")
+			user = await get_user_db(call.from_user.username)
+			dates = get_dates_periods(data)
+			notes = await get_notes_on_date_db(user.id, dates)
+			if notes:
+				await bot.send_message(call.from_user.id, "Записи:")
+				await process_view_note_list_iteration(notes, call.from_user.id)
+			else:
+				await bot.send_message(call.from_user.id, "Записей нет!")
 
 			del data["periods"]
 			await state.finish()
@@ -506,7 +408,7 @@ async def process_edit_note(call: types.CallbackQuery):
 	state = dp.current_state(user = call.from_user.id)
 
 	async with state.proxy() as data:
-		data["note_id"] = int(re.search(r"\d{1,10}", call.data).group(0))
+		data["note_id"] = get_note_id_from_btn_note(call.data)
 
 	await set_state_edit_note(call.from_user.id, state)
 
@@ -523,7 +425,7 @@ async def process_edit_note_state(msg: types.Message, state: FSMContext):
 		if "param_edit" in data:
 			del data["param_edit"]
 
-		await helpers.update_note(data)
+		await edit_note_db(data)
 
 		await state.finish()
 		await bot.send_message(
@@ -539,7 +441,8 @@ async def process_edit_note_state(msg: types.Message, state: FSMContext):
 			data["param_edit"] = param_edit
 
 		if param_edit == "category_id":
-			categories = await helpers.get_categories(username = username)
+			user = await get_user_db(username)
+			categories = await get_categories_db(user.id)
 
 			if not categories:
 				await bot.send_message(
@@ -582,25 +485,17 @@ async def process_edit_note_state_param(msg: types.Message, state: FSMContext):
 	text = msg.text.strip()
 
 	async with state.proxy() as data:
-		if data["param_edit"] == "category_id":
-			async with Session.begin() as session:
-				user_id = await session.execute(select(User).filter_by(
-					username = msg.from_user.username
-				))
-				user_id = user_id.scalars().first().id
-				category = await session.execute(select(Category).filter_by(
-					user_id = user_id,
-					title = text.lower()
-				))
-				category = category.scalars().first()
+		if data["param_edit"] == "category_id" and text != "-":
+			user = await get_user_db(msg.from_user.username)
+			category = await get_category_db(user.id, text.lower())
 
-				if not category:
-					await bot.send_message(
-						msg.from_user.id,
-						"Категория с таким названием не существует!"
-					)
-					await set_state_edit_note(msg.from_user.id, state)
-					return False;
+			if not category:
+				await bot.send_message(
+					msg.from_user.id,
+					"Категория с таким названием не существует!"
+				)
+				await set_state_edit_note(msg.from_user.id, state)
+				return False;
 
 	if text != "-":
 		async with state.proxy() as data:
@@ -621,11 +516,11 @@ async def process_edit_note_change_month(call: types.CallbackQuery, state: FSMCo
 
 
 async def process_edit_note_state_set_date(call: types.CallbackQuery, state: FSMContext):
-	parse_date = helpers.parse_date(data = call.data)
+	parse_date = parse_date_str(data = call.data)
 	choice_date = False
 
 	if parse_date["number_day"]:
-		choice_date = helpers.set_choice_date(parse_date)
+		choice_date = set_choice_date(parse_date)
 
 	current_date = DT.datetime.now()
 
@@ -649,9 +544,9 @@ async def process_edit_note_state_set_date(call: types.CallbackQuery, state: FSM
 			data[f"{data['param_edit']}"]["number_month"] = int(parse_date["number_month"].group(1))
 			data[f"{data['param_edit']}"]["number_year"] = int(parse_date["number_year"].group(1))
 
-		choice_date = helpers.set_choice_date_for_text(choice_date = choice_date)
+		choice_date = set_choice_date_for_text(choice_date)
 
-		helpers.cleans_dict_date()
+		cleans_dict_date()
 
 		await bot.answer_callback_query(
 			call.id,
@@ -664,7 +559,7 @@ async def process_edit_note_state_set_date(call: types.CallbackQuery, state: FSM
 async def process_edit_note_state_set_file(msg: types.Message, state: FSMContext):
 	if msg.text == None or msg.text.strip() != "-":
 		async with state.proxy() as data:
-			data[f"{data['param_edit']}"] = await helpers.set_settings_file_for_note(msg)
+			data[f"{data['param_edit']}"] = await set_settings_file_for_note(msg)
 
 		await set_state_edit_note(msg.from_user.id, state)
 
@@ -683,9 +578,9 @@ async def set_state_edit_note(user_id: int, state: FSMContext):
 
 async def process_delete_note(call: types.CallbackQuery):
 	text = ""
-	is_deleted_note = await helpers.delete_note(
-		username = call.from_user.username, data = call.data, action = "delete"
-	)
+	user = await get_user_db(call.from_user.username)
+	note_id = get_note_id_from_btn_note(call.data)
+	is_deleted_note = await delete_note_db(user.id, note_id, "delete")
 
 	if is_deleted_note:
 		text = "Этой записи уже нет!"
@@ -701,9 +596,9 @@ async def process_delete_note(call: types.CallbackQuery):
 
 async def process_complete_note(call: types.CallbackQuery):
 	text = ""
-	is_deleted_note = await helpers.delete_note(
-		username = call.from_user.username, data = call.data, action = "complete"
-	)
+	user = await get_user_db(call.from_user.username)
+	note_id = get_note_id_from_btn_note(call.data)
+	is_deleted_note = await delete_note_db(user.id, note_id, "complete")
 
 	if is_deleted_note:
 		text = "Этой записи уже нет!"
@@ -711,15 +606,15 @@ async def process_complete_note(call: types.CallbackQuery):
 		await bot.send_message(call.from_user.id, emoji.emojize("Заметка завершена :check_mark_button:"))
 
 	await bot.answer_callback_query(call.id, text = text)
-
 	await bot.delete_message(chat_id = call.from_user.id, message_id = call.message.message_id)
+
 	if re.search(r":file=(\w{0,5})", call.data).group(1) == "True":
 		await bot.delete_message(chat_id = call.from_user.id, message_id = call.message.message_id - 1)
 
 
-async def process_view_note_list_iteration(notes: list, id: int):
+async def process_view_note_list_iteration(notes: List[Note], id: int):
 	for note in notes:
-		data = await helpers.create_text_note(note)
+		data = await create_text_note(note)
 		text_note = data["text"]
 
 		if note.file_id:

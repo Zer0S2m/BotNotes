@@ -1,30 +1,19 @@
 from aiogram import types
 
-from sqlalchemy.future import select
-
-from models import Statistics
-from models import User
-
 from dispatcher import (
-	dp, bot, Session
+	dp, bot
 )
 
 from config import MESSAGES
 
+from utils.db import (
+	get_statistics_db, get_user_db
+)
+
 
 async def process_statistics_control(msg: types.Message):
-	async with Session.begin() as session:
-		user_id = await session.execute(select(User).filter_by(
-			username = msg.from_user.username
-		))
-		user_id = user_id.scalars().first().id
-		statistics = await session.execute(select(Statistics).filter_by(
-			user_id = user_id
-		))
-		statistics = statistics.scalars().first()
-
-		await session.close()
-
+	user = await get_user_db(msg.from_user.username)
+	statistics = await get_statistics_db(user.id)
 	text = MESSAGES["statistics"].format(
 		total_notes = f"{statistics.total_notes}",
 		completed_notes = f"{statistics.completed_notes}",
